@@ -32,12 +32,12 @@ docker run -d \
   --name qbitctrl \
   -p 9911:9911 \
   -v qbitctrl-data:/data \
-  ghcr.io/twojauser/qbitctrl:latest
+  ghcr.io/gekomod/qbitctrl:latest
 ```
 
 # Pobierz najnowszą wersję
 ```bash
-wget https://github.com/twojauser/qbitctrl/releases/latest/download/qbitctrl-linux-amd64
+wget https://github.com/gekomod/qbitctrl/releases/latest/download/qbitctrl-linux-amd64
 ```
 
 # Uruchom
@@ -46,7 +46,7 @@ chmod +x qbitctrl-linux-amd64
 ./qbitctrl-linux-amd64
 Z źródła
 bash
-git clone https://github.com/twojauser/qbitctrl.git
+git clone https://github.com/gekomod/qbitctrl.git
 cd qbitctrl
 make build
 ./qbitctrl
@@ -95,7 +95,7 @@ bash
 
 # Klonowanie
 ```bash
-git clone https://github.com/twojauser/qbitctrl.git
+git clone https://github.com/gekomod/qbitctrl.git
 cd qbitctrl
 ```
 
@@ -142,6 +142,6 @@ Radarr i Sonarr - za integrację
 Wszystkim contributorom!
 
 ## 📞 Kontakt
-GitHub Issues - https://github.com/twojauser/qbitctrl/issues
+GitHub Issues - https://github.com/gekomod/qbitctrl/issues
 
 Discord - (opcjonalnie)
