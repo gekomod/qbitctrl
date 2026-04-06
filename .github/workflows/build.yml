@@ -1,0 +1,131 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'  # Trigger na tagach v1.0.0, v2.0.0 itp.
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Pozwala na ręczne uruchomienie
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Get dependencies
+      run: go mod download
+
+    - name: Build
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        go build -ldflags="-s -w -X main.Version=${VERSION}" -o qbitctrl-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/server/
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: qbitctrl-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: qbitctrl-${{ matrix.goos }}-${{ matrix.goarch }}
+        retention-days: 7
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Prepare release files
+      run: |
+        mkdir -p release_files
+        # Kopiuj binarki
+        cp artifacts/qbitctrl-linux-amd64/qbitctrl-linux-amd64 release_files/
+        cp artifacts/qbitctrl-linux-arm64/qbitctrl-linux-arm64 release_files/
+        # Nadaj uprawnienia
+        chmod +x release_files/qbitctrl-*
+        # Kompresuj (opcjonalnie)
+        cd release_files
+        tar -czf qbitctrl-linux-amd64.tar.gz qbitctrl-linux-amd64
+        tar -czf qbitctrl-linux-arm64.tar.gz qbitctrl-linux-arm64
+        # Oblicz checksumy
+        sha256sum qbitctrl-* > checksums.txt
+        cd ..
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release_files/qbitctrl-linux-amd64
+          release_files/qbitctrl-linux-arm64
+          release_files/qbitctrl-linux-amd64.tar.gz
+          release_files/qbitctrl-linux-arm64.tar.gz
+          release_files/checksums.txt
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Opcjonalny job do budowania dla Windows/macOS
+  build-all:
+    name: Build All Platforms
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+          - goos: darwin
+            goarch: arm64
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+
+    - name: Build
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        EXT=""
+        if [ "${{ matrix.goos }}" = "windows" ]; then EXT=".exe"; fi
+        go build -ldflags="-s -w -X main.Version=${VERSION}" -o qbitctrl-${{ matrix.goos }}-${{ matrix.goarch }}${EXT} ./cmd/server/
+
+    - name: Upload artifact (all)
+      uses: actions/upload-artifact@v4
+      with:
+        name: qbitctrl-${{ matrix.goos }}-${{ matrix.goarch }}
+        path: qbitctrl-${{ matrix.goos }}-${{ matrix.goarch }}*
+        retention-days: 7
