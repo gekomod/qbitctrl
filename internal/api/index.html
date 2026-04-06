@@ -1,0 +1,3077 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>qBitCtrl</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:      #0a0c10;
+    --surface: #0f1218;
+    --border:  #1e2530;
+    --border2: #2a3340;
+    --accent:  #00e5a0;
+    --accent2: #00b8ff;
+    --warn:    #f5a623;
+    --danger:  #ff4455;
+    --muted:   #4a5568;
+    --text:    #cdd9e5;
+    --text2:   #7a8fa3;
+    --mono:    'Share Tech Mono', monospace;
+    --sans:    'Barlow Condensed', sans-serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:var(--sans); font-size:15px; min-height:100vh; overflow-x:hidden; }
+  body::before {
+    content:''; position:fixed; inset:0;
+    background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,160,.015) 2px,rgba(0,229,160,.015) 4px);
+    pointer-events:none; z-index:0;
+  }
+
+  /* TOPBAR */
+  header {
+    position:sticky; top:0; z-index:100;
+    display:flex; align-items:center; gap:16px;
+    padding:0 24px; height:52px;
+    background:rgba(10,12,16,.92);
+    border-bottom:1px solid var(--border);
+    backdrop-filter:blur(12px);
+  }
+  .logo { font-family:var(--mono); font-size:17px; color:var(--accent); letter-spacing:2px; display:flex; align-items:center; gap:8px; }
+  .logo svg { width:20px; height:20px; }
+  .logo .sub { color:var(--text2); font-size:11px; margin-left:4px; }
+  .hdr-spacer { flex:1; }
+  .global-stats { display:flex; gap:20px; font-family:var(--mono); font-size:12px; }
+  .stat-item { display:flex; align-items:center; gap:6px; }
+  .stat-item .lbl { color:var(--text2); }
+  .stat-item .val { color:var(--accent); }
+  .stat-item .val.down { color:var(--accent2); }
+  .stat-item .val.up   { color:var(--warn); }
+  .btn-add {
+    display:flex; align-items:center; gap:6px; padding:6px 14px;
+    background:var(--accent); color:#000;
+    font-family:var(--sans); font-weight:700; font-size:13px; letter-spacing:1px;
+    border:none; cursor:pointer;
+    clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+    transition:all .15s;
+  }
+  .btn-add:hover { background:#00ffc0; transform:scaleX(1.03); }
+
+  /* LAYOUT */
+  .layout { display:grid; grid-template-columns:260px 1fr; min-height:calc(100vh - 52px); position:relative; z-index:1; }
+
+  /* SIDEBAR */
+  aside { border-right:1px solid var(--border); padding:16px 0; display:flex; flex-direction:column; gap:4px; }
+  .sidebar-label { font-size:10px; font-weight:700; letter-spacing:2px; color:var(--muted); padding:10px 20px 4px; text-transform:uppercase; }
+  .server-card {
+    margin:2px 10px; padding:10px 14px;
+    border:1px solid transparent; border-radius:4px; cursor:pointer;
+    display:grid; grid-template-columns:10px 1fr auto; align-items:center; gap:10px;
+    transition:all .15s; position:relative;
+  }
+  .server-card:hover { background:rgba(0,229,160,.05); border-color:var(--border2); }
+  .server-card.active { background:rgba(0,229,160,.08); border-color:var(--accent); }
+  .server-card.active::before {
+    content:''; position:absolute; left:-1px; top:20%; bottom:20%;
+    width:3px; background:var(--accent); border-radius:0 2px 2px 0;
+  }
+  .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; animation:pulse 2s infinite; }
+  .dot.online  { background:var(--accent); box-shadow:0 0 6px var(--accent); }
+  .dot.offline { background:var(--danger); animation:none; }
+  .dot.unknown { background:var(--muted); animation:none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .srv-info { min-width:0; }
+  .srv-name { font-weight:600; font-size:14px; letter-spacing:.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .srv-url  { font-family:var(--mono); font-size:11px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .srv-badge { font-family:var(--mono); font-size:10px; padding:2px 6px; border:1px solid currentColor; border-radius:2px; white-space:nowrap; }
+  .srv-badge.online  { color:var(--accent); }
+  .srv-badge.offline { color:var(--danger); }
+  .srv-badge.unknown { color:var(--muted); }
+  .sidebar-actions { margin-top:auto; padding:12px 10px 0; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:6px; }
+  .btn-ghost {
+    display:flex; align-items:center; gap:8px; width:100%; padding:8px 14px;
+    background:transparent; border:1px solid var(--border2); color:var(--text2);
+    font-family:var(--sans); font-size:13px; letter-spacing:.5px;
+    cursor:pointer; border-radius:3px; transition:all .15s;
+  }
+  .btn-ghost:hover { border-color:var(--accent); color:var(--accent); background:rgba(0,229,160,.05); }
+
+  /* MAIN */
+  main { padding:20px 24px; overflow-y:auto; }
+  .page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+  .page-title { font-size:28px; font-weight:700; letter-spacing:1px; line-height:1.1; }
+  .page-title small { display:block; font-family:var(--mono); font-size:11px; color:var(--text2); font-weight:400; letter-spacing:1px; margin-top:3px; }
+  .actions-row { display:flex; gap:8px; align-items:center; }
+  .btn-action {
+    display:flex; align-items:center; gap:6px; padding:7px 14px;
+    border:1px solid; font-family:var(--sans); font-size:13px; font-weight:600; letter-spacing:.5px;
+    cursor:pointer; border-radius:3px; transition:all .15s; background:transparent;
+  }
+  .btn-action.green  { color:var(--accent);  border-color:var(--accent);  }
+  .btn-action.blue   { color:var(--accent2); border-color:var(--accent2); }
+  .btn-action.warn   { color:var(--warn);    border-color:var(--warn);    }
+  .btn-action.danger { color:var(--danger);  border-color:var(--danger);  }
+  .btn-action:hover  { background:rgba(255,255,255,.04); transform:translateY(-1px); }
+  .btn-action:active { transform:translateY(0); }
+  .btn-action:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+
+  /* METRICS */
+  .metrics-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+  .metric-card { background:var(--surface); border:1px solid var(--border); padding:14px 16px; border-radius:4px; position:relative; overflow:hidden; transition:border-color .2s; }
+  .metric-card:hover { border-color:var(--border2); }
+  .metric-card::after { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--card-accent,var(--accent)); }
+  .metric-card .mc-label { font-size:11px; font-weight:700; letter-spacing:2px; color:var(--text2); text-transform:uppercase; margin-bottom:6px; }
+  .metric-card .mc-value { font-family:var(--mono); font-size:24px; color:var(--card-accent,var(--accent)); line-height:1; }
+  .metric-card .mc-sub   { font-family:var(--mono); font-size:11px; color:var(--muted); margin-top:4px; }
+
+  /* FILTERS */
+  .filters-bar { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .search-box { flex:1; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border2); border-radius:3px; padding:0 12px; }
+  .search-box input { flex:1; background:transparent; border:none; outline:none; color:var(--text); font-family:var(--mono); font-size:13px; padding:8px 0; }
+  .search-box input::placeholder { color:var(--muted); }
+  .filter-btn { padding:7px 12px; background:var(--surface); border:1px solid var(--border2); color:var(--text2); font-family:var(--sans); font-size:12px; font-weight:600; letter-spacing:.5px; cursor:pointer; border-radius:3px; transition:all .15s; white-space:nowrap; }
+  .filter-btn:hover, .filter-btn.active { background:rgba(0,229,160,.08); border-color:var(--accent); color:var(--accent); }
+
+  /* TABLE */
+  .torrent-table { width:100%; border-collapse:collapse; }
+  .torrent-table thead tr { border-bottom:1px solid var(--border2); }
+  .torrent-table th { font-size:10px; font-weight:700; letter-spacing:2px; color:var(--muted); text-transform:uppercase; text-align:left; padding:8px 12px; cursor:pointer; user-select:none; white-space:nowrap; }
+  .torrent-table th:hover { color:var(--text2); }
+  .torrent-table th[data-col]::after { content:' ⇅'; opacity:.25; font-size:9px; }
+  .torrent-table th.sort-asc::after  { content:' ▲'; opacity:1; color:var(--accent); }
+  .torrent-table th.sort-desc::after { content:' ▼'; opacity:1; color:var(--accent); }
+  .torrent-table tbody tr { border-bottom:1px solid rgba(30,37,48,.7); transition:background .12s; cursor:pointer; }
+  .torrent-table tbody tr:hover { background:rgba(0,229,160,.03); }
+  .torrent-table tbody tr.selected { background:rgba(0,229,160,.07); }
+  .torrent-table td { padding:10px 12px; font-size:13px; vertical-align:middle; }
+  .t-name { font-weight:600; font-size:13px; max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .t-name .t-cat { font-size:10px; font-weight:600; letter-spacing:1px; color:var(--accent2); display:block; margin-bottom:2px; }
+  .t-size { font-family:var(--mono); font-size:12px; color:var(--text2); white-space:nowrap; }
+  .t-progress-wrap { min-width:90px; }
+  .progress-bar { height:4px; background:var(--border2); border-radius:2px; overflow:hidden; margin-bottom:4px; }
+  .progress-fill { height:100%; border-radius:2px; transition:width .4s; }
+  .progress-fill.done   { background:var(--accent); }
+  .progress-fill.active { background:var(--accent2); box-shadow:0 0 6px var(--accent2); }
+  .progress-fill.paused { background:var(--muted); }
+  .progress-fill.error  { background:var(--danger); }
+  .t-speed { font-family:var(--mono); font-size:12px; white-space:nowrap; }
+  .t-speed .dn  { color:var(--accent2); }
+  .t-speed .up  { color:var(--warn); }
+  .t-speed .sep { color:var(--muted); margin:0 4px; }
+  .badge-status { display:inline-flex; align-items:center; gap:5px; padding:3px 8px; font-size:10px; font-weight:700; letter-spacing:1px; border:1px solid; border-radius:2px; text-transform:uppercase; white-space:nowrap; }
+  .badge-status.downloading { color:var(--accent2); border-color:var(--accent2); }
+  .badge-status.seeding     { color:var(--accent);  border-color:var(--accent);  }
+  .badge-status.paused      { color:var(--muted);   border-color:var(--muted);   }
+  .badge-status.error       { color:var(--danger);  border-color:var(--danger);  }
+  .badge-status.checking    { color:var(--warn);    border-color:var(--warn);    }
+  .row-actions { display:flex; gap:4px; opacity:0; transition:opacity .15s; }
+  tr:hover .row-actions { opacity:1; }
+  .icon-btn { width:26px; height:26px; border-radius:3px; display:flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border2); color:var(--text2); cursor:pointer; transition:all .12s; }
+  .icon-btn:hover { background:rgba(255,255,255,.06); }
+  .icon-btn.g:hover { color:var(--accent);  border-color:var(--accent); }
+  .icon-btn.w:hover { color:var(--warn);    border-color:var(--warn); }
+  .icon-btn.d:hover { color:var(--danger);  border-color:var(--danger); }
+
+  /* EMPTY STATE */
+  .empty-state { text-align:center; padding:60px 20px; color:var(--muted); font-family:var(--mono); font-size:13px; }
+  .empty-state .big { font-size:32px; margin-bottom:8px; }
+
+  /* SPINNER */
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin .6s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg) } }
+
+  /* TOAST */
+  #toast-container { position:fixed; bottom:20px; right:20px; z-index:300; display:flex; flex-direction:column; gap:8px; }
+  .toast {
+    padding:10px 16px; border-radius:4px; font-family:var(--mono); font-size:12px;
+    border-left:3px solid; background:var(--surface);
+    animation:toastIn .2s ease; min-width:260px;
+  }
+  .toast.ok   { border-color:var(--accent);  color:var(--accent); }
+  .toast.warn { border-color:var(--warn);    color:var(--warn); }
+  .toast.err  { border-color:var(--danger);  color:var(--danger); }
+  .toast.info { border-color:var(--accent2); color:var(--accent2); }
+  @keyframes toastIn { from { opacity:0; transform:translateX(20px) } to { opacity:1; transform:translateX(0) } }
+
+  /* MODAL */
+  .modal-backdrop { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .2s; backdrop-filter:blur(4px); }
+  .modal-backdrop.open { opacity:1; pointer-events:all; }
+  .modal { background:var(--surface); border:1px solid var(--border2); border-radius:6px; padding:24px; width:440px; transform:translateY(12px); transition:transform .2s; position:relative; }
+  .modal-backdrop.open .modal { transform:translateY(0); }
+  .modal-title { font-size:18px; font-weight:700; letter-spacing:1px; margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .form-group { margin-bottom:14px; }
+  .form-group label { display:block; font-size:11px; font-weight:700; letter-spacing:1.5px; color:var(--text2); text-transform:uppercase; margin-bottom:6px; }
+  .form-group input, .form-group select { width:100%; background:var(--bg); border:1px solid var(--border2); color:var(--text); font-family:var(--mono); font-size:13px; padding:8px 12px; border-radius:3px; outline:none; transition:border-color .15s; }
+  .form-group input:focus, .form-group select:focus { border-color:var(--accent); }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .modal-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+
+  /* LOG */
+  .log-panel { margin-top:20px; background:var(--surface); border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+  .log-header { display:flex; align-items:center; justify-content:space-between; padding:8px 14px; border-bottom:1px solid var(--border); background:rgba(0,0,0,.2); }
+  .log-title { font-size:11px; font-weight:700; letter-spacing:2px; color:var(--text2); text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .log-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:pulse 1.5s infinite; }
+  .log-body { padding:10px 14px; font-family:var(--mono); font-size:11px; line-height:1.7; max-height:140px; overflow-y:auto; }
+  .log-body::-webkit-scrollbar { width:4px; }
+  .log-body::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+  .log-line { display:flex; gap:12px; }
+  .log-time { color:var(--muted); flex-shrink:0; }
+  .log-line.ok   .log-msg { color:var(--accent); }
+  .log-line.info .log-msg { color:var(--text2); }
+  .log-line.warn .log-msg { color:var(--warn); }
+  .log-line.err  .log-msg { color:var(--danger); }
+
+  @media (max-width:900px) {
+    .layout { grid-template-columns:1fr; }
+    aside   { display:none; }
+    .metrics-row { grid-template-columns:repeat(2,1fr); }
+  }
+  /* THEME TOGGLE */
+  body.light {
+    --bg:      #f0f2f5;
+    --surface: #ffffff;
+    --border:  #dde1e8;
+    --border2: #c8cfd9;
+    --accent:  #00a870;
+    --accent2: #0088cc;
+    --warn:    #d4820a;
+    --danger:  #cc2233;
+    --muted:   #8896a5;
+    --text:    #1a2230;
+    --text2:   #4a5568;
+  }
+  body.light::before { display:none; }
+  .theme-btn { background:transparent; border:1px solid var(--border2); color:var(--text2);
+    width:32px; height:32px; border-radius:3px; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; transition:all .15s; flex-shrink:0; }
+  .theme-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* SPEED CHART */
+  .speed-chart-wrap { margin-bottom:20px; background:var(--surface);
+    border:1px solid var(--border); border-radius:4px; padding:12px 16px; }
+  .speed-chart-hdr { display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:8px; }
+  .speed-chart-title { font-size:10px; font-weight:700; letter-spacing:2px;
+    color:var(--text2); text-transform:uppercase; }
+  .speed-chart-legend { display:flex; gap:14px; font-family:var(--mono); font-size:11px; }
+  .legend-dl { color:var(--accent2); }
+  .legend-ul { color:var(--warn); }
+  canvas#speed-canvas { width:100%; height:60px; display:block; }
+
+  /* BULK ACTIONS BAR */
+  .bulk-bar { display:none; align-items:center; gap:10px; padding:8px 14px;
+    background:rgba(0,229,160,.06); border:1px solid rgba(0,229,160,.2);
+    border-radius:4px; margin-bottom:10px; }
+  .bulk-bar.visible { display:flex; }
+  .bulk-count { font-family:var(--mono); font-size:12px; color:var(--accent); flex:1; }
+  .bulk-sep { width:1px; height:18px; background:var(--border2); }
+
+  /* ADD TORRENT MODAL */
+  .add-torrent-tabs { display:flex; gap:0; margin-bottom:16px;
+    border-bottom:1px solid var(--border); }
+  .add-tab { padding:8px 16px; font-family:var(--sans); font-size:12px; font-weight:700;
+    letter-spacing:1px; background:transparent; border:none; color:var(--text2);
+    cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; }
+  .add-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .add-tab-panel { display:none; }
+  .add-tab-panel.active { display:block; }
+  .drop-zone { border:2px dashed var(--border2); border-radius:6px; padding:32px;
+    text-align:center; color:var(--muted); font-family:var(--mono); font-size:12px;
+    transition:all .15s; cursor:pointer; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color:var(--accent);
+    color:var(--accent); background:rgba(0,229,160,.04); }
+  .drop-zone .drop-icon { font-size:28px; margin-bottom:8px; }
+
+  /* FILE LIST MODAL */
+  .file-modal-bg { position:fixed; inset:0; z-index:300;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .18s; }
+  .file-modal-bg.open { opacity:1; pointer-events:all; }
+  .file-modal { background:var(--surface); border:1px solid var(--border2);
+    border-radius:8px; padding:0; width:600px; max-width:96vw; max-height:80vh;
+    display:flex; flex-direction:column;
+    transform:translateY(10px); transition:transform .18s; }
+  .file-modal-bg.open .file-modal { transform:translateY(0); }
+  .file-modal-hdr { padding:16px 20px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+  .file-modal-title { font-size:14px; font-weight:700; letter-spacing:.5px; }
+  .file-modal-body { overflow-y:auto; flex:1; padding:8px 0; }
+  .file-row { display:flex; align-items:center; gap:10px; padding:7px 20px;
+    border-bottom:1px solid rgba(30,37,48,.5); font-size:12px; }
+  .file-row:last-child { border-bottom:none; }
+  .file-name { flex:1; font-family:var(--mono); color:var(--text); word-break:break-all; }
+  .file-size { color:var(--text2); font-family:var(--mono); font-size:11px; white-space:nowrap; }
+  .file-prog { width:60px; }
+  .file-prog-bar { height:3px; background:var(--border2); border-radius:2px; }
+  .file-prog-fill { height:100%; background:var(--accent); border-radius:2px; }
+
+  /* SPEED LIMIT MODAL */
+  .spd-modal-bg { position:fixed; inset:0; z-index:300;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .18s; }
+  .spd-modal-bg.open { opacity:1; pointer-events:all; }
+  .spd-modal { background:var(--surface); border:1px solid var(--border2);
+    border-radius:8px; padding:22px 24px; width:380px; max-width:96vw;
+    transform:translateY(10px); transition:transform .18s; }
+  .spd-modal-bg.open .spd-modal { transform:translateY(0); }
+  .spd-slider-wrap { margin-bottom:18px; }
+  .spd-slider-label { display:flex; justify-content:space-between;
+    font-size:11px; font-weight:700; letter-spacing:1.5px; color:var(--text2);
+    text-transform:uppercase; margin-bottom:8px; }
+  .spd-slider-val { color:var(--accent); font-family:var(--mono); }
+  input[type=range] { width:100%; accent-color:var(--accent); cursor:pointer; }
+
+  /* EDIT SERVER MODAL */
+  .edit-modal-bg { position:fixed; inset:0; z-index:300;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .18s; }
+  .edit-modal-bg.open { opacity:1; pointer-events:all; }
+  .edit-modal { background:var(--surface); border:1px solid var(--border2);
+    border-radius:8px; padding:24px; width:440px; max-width:96vw;
+    transform:translateY(10px); transition:transform .18s; }
+  .edit-modal-bg.open .edit-modal { transform:translateY(0); }
+
+  /* TAG BADGE */
+  .tag-pill { display:inline-flex; align-items:center; gap:3px; font-family:var(--mono);
+    font-size:10px; padding:1px 6px; border-radius:10px;
+    background:rgba(0,184,255,.1); border:1px solid rgba(0,184,255,.3);
+    color:var(--accent2); margin-right:3px; }
+
+  /* NOTIFY BELL */
+  .notif-btn { background:transparent; border:1px solid var(--border2); color:var(--text2);
+    width:32px; height:32px; border-radius:3px; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; transition:all .15s; position:relative; flex-shrink:0; }
+  .notif-btn:hover { border-color:var(--warn); color:var(--warn); }
+  .notif-btn.active { border-color:var(--accent); color:var(--accent); }
+  .notif-dot { position:absolute; top:4px; right:4px; width:6px; height:6px;
+    border-radius:50%; background:var(--accent); display:none; }
+  .notif-btn.active .notif-dot { display:block; }
+
+  /* POLL INTERVAL */
+  .poll-select { background:var(--surface); border:1px solid var(--border2);
+    color:var(--text2); font-family:var(--mono); font-size:11px; padding:4px 8px;
+    border-radius:3px; cursor:pointer; }
+  .poll-select:focus { outline:none; border-color:var(--accent); }
+
+  /* ARR QUEUE PANEL */
+  .arr-queue-panel { margin-top:16px; background:var(--surface);
+    border:1px solid var(--border); border-radius:4px; overflow:hidden; }
+  .arr-queue-hdr { display:flex; align-items:center; justify-content:space-between;
+    padding:8px 14px; border-bottom:1px solid var(--border);
+    background:rgba(0,0,0,.2); }
+  .arr-queue-title { font-size:11px; font-weight:700; letter-spacing:2px;
+    color:var(--text2); text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .arr-queue-body { padding:4px 0; max-height:180px; overflow-y:auto; }
+  .arr-queue-row { display:flex; align-items:center; gap:10px; padding:7px 14px;
+    border-bottom:1px solid rgba(30,37,48,.5); font-size:12px; }
+  .arr-queue-row:last-child { border-bottom:none; }
+  .arr-queue-name { flex:1; font-weight:600; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; }
+  .arr-queue-status { font-family:var(--mono); font-size:10px; color:var(--text2); }
+  .arr-queue-pct { font-family:var(--mono); font-size:11px; color:var(--accent); width:40px; text-align:right; }
+
+  /* RADARR PANEL */
+  .icon-btn.radarr:hover { color:#f5a623; border-color:#f5a623; }
+  .radarr-backdrop { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.75);
+    display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none;
+    transition:opacity .2s; backdrop-filter:blur(4px); }
+  .radarr-backdrop.open { opacity:1; pointer-events:all; }
+  .radarr-modal { background:var(--surface); border:1px solid var(--border2); border-radius:8px;
+    padding:24px; width:500px; max-width:95vw; position:relative;
+    transform:translateY(12px); transition:transform .2s; }
+  .radarr-backdrop.open .radarr-modal { transform:translateY(0); }
+  .radarr-modal .rm-title { font-size:15px; font-weight:700; letter-spacing:1px;
+    margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; }
+  .radarr-result { display:flex; gap:16px; margin-bottom:14px; }
+  .radarr-poster { width:80px; height:120px; object-fit:cover; border-radius:4px;
+    border:1px solid var(--border2); flex-shrink:0; }
+  .radarr-poster-ph { width:80px; height:120px; border-radius:4px;
+    border:1px solid var(--border2); flex-shrink:0; background:var(--border);
+    display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:30px; }
+  .radarr-info { flex:1; min-width:0; }
+  .radarr-rtitle { font-size:16px; font-weight:700; margin-bottom:3px; }
+  .radarr-year   { font-family:var(--mono); font-size:12px; color:var(--text2); margin-bottom:8px; }
+  .radarr-overview { font-size:12px; color:var(--text2); line-height:1.6;
+    display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden; }
+  .radarr-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+  .radarr-tag  { font-family:var(--mono); font-size:10px; padding:2px 7px;
+    border:1px solid var(--border2); border-radius:2px; color:var(--text2); }
+  .radarr-tag.g { border-color:var(--accent);  color:var(--accent); }
+  .radarr-tag.b { border-color:var(--accent2); color:var(--accent2); }
+  .radarr-tag.w { border-color:var(--warn);    color:var(--warn); }
+  .radarr-tag.e { border-color:var(--danger);  color:var(--danger); }
+  .radarr-nf { text-align:center; padding:24px; color:var(--muted); font-family:var(--mono); font-size:13px; }
+  .radarr-cfg { background:var(--bg); border:1px solid var(--border2); border-radius:6px; padding:16px; margin-bottom:12px; }
+  .radarr-cfg-bar { display:flex; align-items:center; gap:8px; padding:6px 12px; margin-top:4px;
+    background:rgba(0,229,160,.06); border:1px solid rgba(0,229,160,.2); border-radius:3px;
+    font-family:var(--mono); font-size:11px; color:var(--accent); cursor:pointer; width:100%; }
+  .radarr-cfg-bar:hover { background:rgba(0,229,160,.12); }
+  .radarr-spinner { text-align:center; padding:28px; }
+
+  /* ── DELETE MODAL ─────────────────────────────────────────── */
+  .del-modal-bg { position:fixed; inset:0; z-index:300;
+    background:rgba(0,0,0,.78); backdrop-filter:blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity .18s; }
+  .del-modal-bg.open { opacity:1; pointer-events:all; }
+  .del-modal { background:var(--surface); border:1px solid var(--border2);
+    border-radius:8px; padding:22px 24px; width:400px; max-width:96vw;
+    transform:translateY(10px); transition:transform .18s; }
+  .del-modal-bg.open .del-modal { transform:translateY(0); }
+  .del-modal-title { font-size:15px; font-weight:700; color:var(--danger);
+    margin-bottom:6px; }
+  .del-modal-name { font-family:var(--mono); font-size:11px; color:var(--text2);
+    margin-bottom:16px; word-break:break-all; line-height:1.5; }
+  .del-option { display:flex; align-items:flex-start; gap:12px; padding:11px 14px;
+    border:1px solid var(--border2); border-radius:6px; cursor:pointer;
+    transition:border-color .12s, background .12s; margin-bottom:8px; }
+  .del-option:hover { border-color:var(--border); background:rgba(255,255,255,.03); }
+  .del-option input[type=radio] { margin-top:3px; flex-shrink:0; accent-color:var(--danger); }
+  .del-option-label { font-size:13px; font-weight:600; display:block; margin-bottom:3px; }
+  .del-option-desc  { font-size:11px; color:var(--text2); line-height:1.55; }
+  .del-option.red   { border-color:rgba(255,68,85,.3); }
+  .del-option.red:hover { border-color:var(--danger); background:rgba(255,68,85,.06); }
+  .del-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+
+  /* ── ARR BADGE IN TORRENT ROW ──────────────────────────────── */
+  .arr-badge { display:inline-flex; align-items:center; gap:3px;
+    font-family:var(--mono); font-size:9px; font-weight:700;
+    padding:2px 6px; border-radius:2px; border:1px solid;
+    white-space:nowrap; letter-spacing:.5px; }
+  .arr-badge.lib  { color:var(--accent);  border-color:var(--accent);
+    background:rgba(0,229,160,.08); }
+  .arr-badge.miss { color:var(--warn);    border-color:var(--warn);
+    background:rgba(245,166,35,.08); }
+  .arr-badge.none { color:var(--muted);   border-color:var(--muted);
+    background:transparent; }
+  .arr-badge.loading { color:var(--muted); border-color:var(--border2);
+    background:transparent; }
+
+
+  /* ── VIEW TABS ───────────────────────────────────────────── */
+  .view-tab { transition:color .15s, border-color .15s; }
+  .view-tab.active { color:var(--accent) !important; border-color:var(--accent) !important; }
+
+  /* ── ARR VIEW ─────────────────────────────────────────────── */
+  #view-arr { padding:0; }
+  .arr-view { display:flex; flex-direction:column; gap:16px; }
+  .arr-section { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .arr-section-hdr { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border); }
+  .arr-section-title { font-size:10px; font-weight:700; letter-spacing:2px; color:var(--text2); text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .arr-section-title .dot { width:6px; height:6px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .arr-item { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid rgba(30,37,48,.6); }
+  .arr-item:last-child { border-bottom:none; }
+  .arr-item-poster { width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0; }
+  .arr-item-poster-ph { width:36px; height:54px; border-radius:3px; flex-shrink:0; background:var(--border2); display:flex; align-items:center; justify-content:center; font-size:16px; color:var(--muted); }
+  .arr-item-info { flex:1; min-width:0; }
+  .arr-item-title { font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .arr-item-sub { font-family:var(--mono); font-size:10px; color:var(--text2); margin-top:2px; }
+  .arr-item-prog-bar { height:3px; background:var(--border2); border-radius:2px; overflow:hidden; margin-top:5px; }
+  .arr-item-prog-fill { height:100%; background:var(--accent2); border-radius:2px; }
+  .arr-item-pct { font-family:var(--mono); font-size:10px; color:var(--accent); margin-top:2px; }
+  .arr-item-status { font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:3px; border:1px solid; white-space:nowrap; flex-shrink:0; }
+  .arr-item-actions { display:flex; gap:4px; flex-shrink:0; }
+  .arr-health-item { display:flex; align-items:flex-start; gap:10px; padding:10px 16px; border-bottom:1px solid rgba(30,37,48,.6); }
+  .arr-health-item:last-child { border-bottom:none; }
+  .arr-health-icon { font-size:14px; flex-shrink:0; margin-top:1px; }
+  .arr-health-msg { font-size:12px; color:var(--text); }
+  .arr-health-src { font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:2px; }
+  .arr-search-bar { display:flex; gap:8px; padding:12px 16px; border-bottom:1px solid rgba(30,37,48,.4); }
+  .arr-search-input { flex:1; background:var(--bg); border:1px solid var(--border2); color:var(--text); font-family:var(--mono); font-size:13px; padding:7px 12px; border-radius:4px; outline:none; transition:border-color .15s; }
+  .arr-search-input:focus { border-color:var(--accent); }
+  .arr-search-tabs { display:flex; gap:6px; padding:8px 16px 10px; }
+  .arr-search-tab { padding:4px 14px; font-family:var(--sans); font-size:11px; font-weight:700; letter-spacing:1px; border:1px solid var(--border2); border-radius:3px; cursor:pointer; color:var(--text2); background:none; transition:.15s; }
+  .arr-search-tab.active { color:var(--accent); border-color:var(--accent); }
+  .arr-result { display:flex; gap:12px; padding:12px 16px; border-bottom:1px solid rgba(30,37,48,.6); cursor:pointer; transition:background .12s; }
+  .arr-result:last-child { border-bottom:none; }
+  .arr-result:hover { background:rgba(0,229,160,.04); }
+  .arr-result-poster { width:44px; height:66px; object-fit:cover; border-radius:3px; flex-shrink:0; background:var(--border2); }
+  .arr-result-poster-ph { width:44px; height:66px; border-radius:3px; flex-shrink:0; background:var(--border2); display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--muted); }
+  .arr-result-info { flex:1; min-width:0; }
+  .arr-result-title { font-weight:700; font-size:14px; }
+  .arr-result-year { font-family:var(--mono); font-size:11px; color:var(--text2); margin-top:2px; }
+  .arr-result-overview { font-size:12px; color:var(--text2); margin-top:5px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .arr-result-tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+  .arr-result-actions { display:flex; flex-direction:column; gap:5px; justify-content:center; flex-shrink:0; }
+  .arr-empty { padding:28px; text-align:center; color:var(--muted); font-family:var(--mono); font-size:12px; }
+  .arr-cfg-status { display:flex; gap:10px; flex-wrap:wrap; padding:12px 16px; }
+  .arr-cfg-pill { display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; border:1px solid; font-family:var(--mono); font-size:11px; cursor:pointer; transition:opacity .15s; }
+  .arr-cfg-pill.ok { border-color:var(--accent); color:var(--accent); }
+  .arr-cfg-pill.err { border-color:var(--danger); color:var(--danger); }
+  .arr-cfg-pill.none { border-color:var(--muted); color:var(--muted); }
+  .arr-cfg-pill:hover { opacity:.75; }
+  .arr-result-in-lib { color:var(--accent); font-family:var(--mono); font-size:10px; margin-top:4px; }
+  .arr-result-miss    { color:var(--warn);   font-family:var(--mono); font-size:10px; margin-top:4px; }
+  .arr-result-none    { color:var(--muted);  font-family:var(--mono); font-size:10px; margin-top:4px; }
+
+  /* ── PASSWORD MODAL ───────────────────────────────────────── */
+  .pass-modal-bg { position:fixed; inset:0; z-index:400; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.65); opacity:0; pointer-events:none; transition:opacity .2s; }
+  .pass-modal-bg.open { opacity:1; pointer-events:all; }
+  .pass-modal { background:var(--surface); border:1px solid var(--border2); border-radius:8px; padding:28px; width:380px; max-width:95vw; transform:translateY(-10px); transition:transform .2s; }
+  .pass-modal-bg.open .pass-modal { transform:translateY(0); }
+  .pass-modal-title { font-size:15px; font-weight:700; letter-spacing:.5px; margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+  
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+      <path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>
+    </svg>
+    QBIT<span style="color:var(--accent)">CTRL</span>
+    <span class="sub">:9911</span>
+  </div>
+  <div class="hdr-spacer"></div>
+  <div class="global-stats">
+    <div class="stat-item"><span class="lbl">▼</span><span class="val down" id="hdr-dl">—</span></div>
+    <div class="stat-item"><span class="lbl">▲</span><span class="val up"   id="hdr-ul">—</span></div>
+    <div class="stat-item"><span class="lbl">SERWERY</span><span class="val" id="hdr-srv">0/0</span></div>
+  </div>
+  <select class="poll-select" id="poll-interval" onchange="changePollInterval(this.value)" title="Interwał odświeżania">
+    <option value="3000">3s</option>
+    <option value="5000" selected>5s</option>
+    <option value="10000">10s</option>
+    <option value="30000">30s</option>
+  </select>
+  <button class="notif-btn" id="notif-btn" onclick="toggleNotifications()" title="Powiadomienia o ukończonych torrentach">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <span class="notif-dot"></span>
+  </button>
+  <button class="theme-btn" onclick="toggleTheme()" title="Motyw jasny/ciemny" id="theme-btn">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+  </button>
+  <button class="btn-add" id="btn-add-torrent" onclick="openAddTorrentModal()">+ DODAJ TORRENT</button>
+  <button class="btn-add" id="btn-add-server" style="background:var(--border2);color:var(--text2);margin-left:4px" onclick="openModal()">+ SERWER</button>
+  <button class="theme-btn" onclick="openPassModal()" title="Zmień hasło / Change password">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+  </button>
+  <button class="theme-btn" onclick="toggleLang()" id="lang-btn" title="PL/EN" style="font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:0 10px;width:auto">PL</button>
+</header>
+
+<div class="layout">
+<!-- SIDEBAR -->
+<aside>
+  <div class="sidebar-label">Serwery</div>
+  <div id="server-list"></div>
+  <div class="sidebar-actions">
+    <div style="display:flex;gap:4px;margin-bottom:8px">
+      <button class="btn-ghost view-tab active" id="tab-torrents" onclick="switchView('torrents')" style="flex:1;justify-content:center;gap:5px">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <span id="tab-torrents-lbl">TORRENTY</span>
+      </button>
+      <button class="btn-ghost view-tab" id="tab-arr" onclick="switchView('arr')" style="flex:1;justify-content:center;gap:5px">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+        ARR
+      </button>
+    </div>
+    <button class="btn-ghost" onclick="refreshAll()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      ODŚWIEŻ WSZYSTKIE
+    </button>
+    <button class="btn-ghost" onclick="openSpdModal()" id="btn-spd-global">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
+      LIMITY PRĘDKOŚCI
+    </button>
+    <button class="btn-ghost" onclick="exportTorrents()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      EKSPORT CSV
+    </button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main>
+<div id="view-torrents">
+  <div class="page-header">
+    <div class="page-title" id="page-title">
+      Wybierz serwer
+      <small id="page-sub">— brak połączenia —</small>
+    </div>
+    <div class="actions-row">
+      <button class="btn-action green"  id="btn-resume"   onclick="globalAction('resume_all')" disabled>
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>WZNÓW
+      </button>
+      <button class="btn-action warn"   id="btn-pause"    onclick="globalAction('pause_all')"  disabled>
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>PAUZA
+      </button>
+      <button class="btn-action blue"   id="btn-restart"  onclick="globalAction('restart')"    disabled>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>RESTART
+      </button>
+      <button class="btn-action danger" id="btn-shutdown" onclick="globalAction('shutdown')"   disabled>
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 11-12.73 0M12 2v10"/></svg>STOP
+      </button>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="metrics-row">
+    <div class="metric-card" style="--card-accent:var(--accent2)">
+      <div class="mc-label">Pobieranie</div>
+      <div class="mc-value" id="m-dl">—</div>
+      <div class="mc-sub" id="m-dl-sub">wybierz serwer</div>
+    </div>
+    <div class="metric-card" style="--card-accent:var(--warn)">
+      <div class="mc-label">Wysyłanie</div>
+      <div class="mc-value" id="m-ul">—</div>
+      <div class="mc-sub" id="m-ul-sub">wybierz serwer</div>
+    </div>
+    <div class="metric-card" style="--card-accent:var(--accent)">
+      <div class="mc-label">Aktywne</div>
+      <div class="mc-value" id="m-active">—</div>
+      <div class="mc-sub" id="m-total-sub">torrentów łącznie</div>
+    </div>
+    <div class="metric-card" style="--card-accent:var(--danger)">
+      <div class="mc-label">Błędy</div>
+      <div class="mc-value" id="m-errors">—</div>
+      <div class="mc-sub">wymagają uwagi</div>
+    </div>
+  </div>
+
+  <!-- SPEED CHART -->
+  <div class="speed-chart-wrap" id="chart-wrap" style="display:none">
+    <div class="speed-chart-hdr">
+      <div class="speed-chart-title">Prędkość (ostatnie 60s)</div>
+      <div class="speed-chart-legend">
+        <span class="legend-dl">▼ <span id="chart-dl-cur">0 B/s</span></span>
+        <span class="legend-ul">▲ <span id="chart-ul-cur">0 B/s</span></span>
+      </div>
+    </div>
+    <canvas id="speed-canvas" height="60"></canvas>
+  </div>
+
+  <!-- BULK ACTIONS BAR -->
+  <div class="bulk-bar" id="bulk-bar">
+    <span class="bulk-count" id="bulk-count">0 zaznaczonych</span>
+    <button class="btn-action green" style="padding:4px 10px;font-size:12px" onclick="bulkAction('resume')">▶ WZNÓW</button>
+    <button class="btn-action warn"  style="padding:4px 10px;font-size:12px" onclick="bulkAction('pause')">⏸ PAUZA</button>
+    <button class="btn-action blue"  style="padding:4px 10px;font-size:12px" onclick="bulkAction('setCategory')">🏷 KATEGORIA</button>
+    <div class="bulk-sep"></div>
+    <button class="btn-action danger" style="padding:4px 10px;font-size:12px" onclick="bulkAction('delete')">✕ USUŃ</button>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search" placeholder="Filtruj torrenty..." oninput="renderTorrents()">
+    </div>
+    <button class="filter-btn active" onclick="setFilter('all',this)">WSZYSTKIE</button>
+    <button class="filter-btn" onclick="setFilter('downloading',this)">POBIERANIE</button>
+    <button class="filter-btn" onclick="setFilter('seeding',this)">SEEDING</button>
+    <button class="filter-btn" onclick="setFilter('paused',this)">PAUZA</button>
+    <button class="filter-btn" onclick="setFilter('error',this)">BŁĘDY</button>
+  </div>
+
+  <!-- TABLE -->
+  <table class="torrent-table">
+    <thead>
+      <tr>
+        <th style="width:32px"><input type="checkbox" onchange="selectAll(this)"></th>
+        <th data-col="name"     class="sort-asc" onclick="sortBy('name')">NAZWA</th>
+        <th style="width:80px">ARR</th>
+        <th data-col="size"     onclick="sortBy('size')">ROZMIAR</th>
+        <th data-col="progress" onclick="sortBy('progress')">POSTĘP</th>
+        <th data-col="dl_speed" onclick="sortBy('dl_speed')">PRĘDKOŚĆ ▼</th>
+        <th data-col="state"    onclick="sortBy('state')">STATUS</th>
+        <th data-col="eta"      onclick="sortBy('eta')">ETA</th>
+        <th style="width:110px">AKCJE</th>
+      </tr>
+    </thead>
+    <tbody id="torrent-body">
+      <tr><td colspan="10"><div class="empty-state"><div class="big">⬡</div>Dodaj i wybierz serwer, aby zobaczyć torrenty</div></td></tr>
+    </tbody>
+  </table>
+
+  <!-- LOG -->
+  <div class="log-panel">
+    <div class="log-header">
+      <div class="log-title"><span class="log-dot"></span> LOG ZDARZEŃ</div>
+      <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="clearLog()">WYCZYŚĆ</button>
+    </div>
+    <div class="log-body" id="log-body"></div>
+  </div>
+  <!-- ARR QUEUE (stara kolejka ukryta, zastąpiona przez ARR tab) -->
+  <div class="arr-queue-panel" id="arr-queue-panel" style="display:none">
+    <div class="arr-queue-hdr">
+      <div class="arr-queue-title">
+        <span class="log-dot"></span> KOLEJKA RADARR / SONARR
+      </div>
+      <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="refreshArrQueue()">↻ ODŚWIEŻ</button>
+    </div>
+    <div class="arr-queue-body" id="arr-queue-body">
+      <div style="padding:12px 20px;color:var(--muted);font-family:var(--mono);font-size:11px">Brak danych – skonfiguruj Radarr/Sonarr</div>
+    </div>
+  </div>
+</div><!-- end view-torrents -->
+
+<!-- ═══════════════════════════════════════════ ARR VIEW ═══ -->
+<div id="view-arr" style="display:none">
+  <div class="arr-view">
+
+    <!-- STATUS KONFIGURACJI -->
+    <div class="arr-section">
+      <div class="arr-section-hdr">
+        <div class="arr-section-title"><span class="dot"></span> <span id="arr-cfg-title">KONFIGURACJA</span></div>
+        <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="openRadarrSettings()" id="arr-cfg-btn">⚙ EDYTUJ</button>
+      </div>
+      <div class="arr-cfg-status" id="arr-cfg-status">
+        <div class="arr-cfg-pill none" id="arr-radarr-pill" onclick="openRadarrSettings()">
+          🎬 <span>Radarr: <span data-i18n="not_configured">nie skonfigurowano</span></span>
+        </div>
+        <div class="arr-cfg-pill none" id="arr-sonarr-pill" onclick="openRadarrSettings()">
+          📺 <span>Sonarr: <span data-i18n="not_configured">nie skonfigurowano</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- WYSZUKIWARKA -->
+    <div class="arr-section">
+      <div class="arr-section-hdr">
+        <div class="arr-section-title"><span class="dot" style="background:var(--accent2)"></span> <span id="arr-search-title">WYSZUKAJ I DODAJ</span></div>
+      </div>
+      <div class="arr-search-bar">
+        <input class="arr-search-input" id="arr-search-input" placeholder="Szukaj filmu lub serialu…"
+               onkeydown="if(event.key==='Enter')arrSearch()">
+        <button class="btn-action green" style="padding:7px 16px;font-size:12px" onclick="arrSearch()" id="arr-search-btn">SZUKAJ</button>
+      </div>
+      <div class="arr-search-tabs">
+        <button class="arr-search-tab active" id="arr-tab-radarr" onclick="setArrSearchTab('radarr',this)">🎬 RADARR</button>
+        <button class="arr-search-tab" id="arr-tab-sonarr" onclick="setArrSearchTab('sonarr',this)">📺 SONARR</button>
+      </div>
+      <div id="arr-search-results">
+        <div class="arr-empty" id="arr-search-empty">🔍 Wpisz tytuł i naciśnij SZUKAJ</div>
+      </div>
+    </div>
+
+    <!-- KOLEJKA -->
+    <div class="arr-section">
+      <div class="arr-section-hdr">
+        <div class="arr-section-title"><span class="dot" style="background:var(--warn)"></span> <span id="arr-queue-title2">KOLEJKA POBIERANIA</span></div>
+        <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="loadArrQueueTab()" id="arr-queue-refresh-btn">↻ ODŚWIEŻ</button>
+      </div>
+      <div id="arr-queue-tab-body">
+        <div class="arr-empty" id="arr-queue-empty">Ładowanie…</div>
+      </div>
+    </div>
+
+    <!-- OSTATNIO DODANE -->
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="arr-section" style="flex:1;min-width:300px">
+        <div class="arr-section-hdr">
+          <div class="arr-section-title"><span class="dot" style="background:var(--accent)"></span> <span id="arr-recent-radarr-title">OSTATNIE FILMY</span></div>
+          <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="loadArrRecent()">↻</button>
+        </div>
+        <div id="arr-recent-radarr"><div class="arr-empty">Ładowanie…</div></div>
+      </div>
+      <div class="arr-section" style="flex:1;min-width:300px">
+        <div class="arr-section-hdr">
+          <div class="arr-section-title"><span class="dot" style="background:var(--accent)"></span> <span id="arr-recent-sonarr-title">OSTATNIE SERIALE</span></div>
+          <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="loadArrRecent()">↻</button>
+        </div>
+        <div id="arr-recent-sonarr"><div class="arr-empty">Ładowanie…</div></div>
+      </div>
+    </div>
+
+    <!-- HEALTH CHECK -->
+    <div class="arr-section">
+      <div class="arr-section-hdr">
+        <div class="arr-section-title"><span class="dot" style="background:var(--danger)"></span> <span id="arr-health-title">HEALTH CHECK</span></div>
+        <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="loadArrHealth()" id="arr-health-btn">↻ SPRAWDŹ</button>
+      </div>
+      <div id="arr-health-body">
+        <div class="arr-empty">Kliknij ↻ aby sprawdzić</div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end view-arr -->
+
+</main>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- MODAL DODAJ SERWER -->
+<div class="modal-backdrop" id="modal" onclick="closeModalBg(event)">
+  <div class="modal">
+    <div class="modal-title">+ DODAJ SERWER qBittorrent</div>
+    <div class="form-group">
+      <label>Nazwa serwera</label>
+      <input type="text" placeholder="np. nasdell" id="f-name">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Host / IP</label>
+        <input type="text" placeholder="192.168.1.10" id="f-host">
+      </div>
+      <div class="form-group">
+        <label>Port WebUI</label>
+        <input type="number" placeholder="8080" id="f-port" value="8080">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Login</label>
+        <input type="text" placeholder="admin" id="f-user">
+      </div>
+      <div class="form-group">
+        <label>Hasło</label>
+        <input type="password" placeholder="••••••••" id="f-pass">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Protokół</label>
+        <select id="f-https">
+          <option value="false">HTTP</option>
+          <option value="true">HTTPS</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Typ restartu</label>
+        <select id="f-restart-type" onchange="updateRestartUnit('f')">
+          <option value="none">Brak / ręczny</option>
+          <option value="docker">Docker</option>
+          <option value="systemd">systemd</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" id="f-unit-wrap" style="display:none">
+      <label>Nazwa unit systemd / kontenera Docker</label>
+      <input type="text" id="f-restart-unit" placeholder="qbittorrent-nox">
+    </div>
+    <div id="f-ssh-wrap" style="display:none;background:rgba(0,184,255,.04);border:1px solid rgba(0,184,255,.15);border-radius:4px;padding:12px 14px;margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text2);margin-bottom:10px">SSH (wymagane do zdalnego restartu)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>SSH User</label>
+          <input type="text" id="f-ssh-user" placeholder="root" value="root">
+        </div>
+        <div class="form-group">
+          <label>SSH Port</label>
+          <input type="number" id="f-ssh-port" placeholder="22" value="22" style="width:80px">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Ścieżka klucza SSH (puste = agent)</label>
+        <input type="text" id="f-ssh-key" placeholder="/root/.ssh/id_qbitctrl" style="font-size:12px;font-family:var(--mono)">
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">
+        💡 Klucz musi być skopiowany na hosta: <code style="font-family:var(--mono)">ssh-copy-id -i &lt;klucz&gt;.pub user@host</code>
+      </div>
+    </div>
+    <div style="background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.15);border-radius:4px;padding:12px 14px;margin-bottom:4px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text2);margin-bottom:10px">SCHEDULED RESTART</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="f-auto-restart" onchange="updateAutoRestartUI('f')">
+          Restartuj co X minut
+        </label>
+        <div id="f-auto-restart-interval-wrap" style="display:none;align-items:center;gap:6px">
+          <input type="number" id="f-auto-restart-interval" value="60" min="1" max="10080" style="width:70px;padding:4px 8px;font-size:12px">
+          <span style="font-size:12px;color:var(--text2)">min (60=1h · 1440=1dzień)</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">
+        ⚠ Wymaga SSH + Docker lub systemd
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-action warn"   onclick="testConn()">TESTUJ</button>
+      <button class="btn-ghost"         onclick="closeModal()">ANULUJ</button>
+      <button class="btn-action green"  onclick="addServer()">DODAJ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let servers      = [];        // [{id, name, host, port, online, ...}]
+let activeId     = null;
+let torrents     = [];
+let activeFilter = 'all';
+const logs       = [];
+let pollTimer    = null;
+
+// ══════════════════════════════════════
+//  API HELPERS
+// ══════════════════════════════════════
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api' + path, opts);
+  const json = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(json.error || r.statusText);
+  return json;
+}
+const GET    = p        => api('GET',    p);
+const POST   = (p,b)    => api('POST',   p, b);
+const DELETE = p        => api('DELETE', p);
+const PATCH  = (p,b)    => api('PATCH',  p, b);
+
+// ══════════════════════════════════════
+//  TOAST & LOG
+// ══════════════════════════════════════
+function toast(cls, msg) {
+  const el = document.createElement('div');
+  el.className = `toast ${cls}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+function addLog(cls, msg) {
+  const now = new Date();
+  const t = [now.getHours(), now.getMinutes(), now.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+  logs.unshift({ cls, time:t, msg });
+  renderLog();
+}
+function renderLog() {
+  document.getElementById('log-body').innerHTML =
+    logs.slice(0,40).map(l =>
+      `<div class="log-line ${l.cls}"><span class="log-time">${l.time}</span><span class="log-msg">${l.msg}</span></div>`
+    ).join('');
+}
+function clearLog() { logs.length=0; renderLog(); }
+
+// ══════════════════════════════════════
+//  SERVERS
+// ══════════════════════════════════════
+async function loadServers() {
+  try {
+    servers = await GET('/servers');
+    renderSidebar();
+    updateHdrSrvCount();
+  } catch(e) {
+    addLog('err', 'Nie można pobrać listy serwerów: ' + e.message);
+  }
+}
+
+function renderSidebar() {
+  const el = document.getElementById('server-list');
+  if (!servers.length) {
+    el.innerHTML = '<div style="padding:12px 20px;font-size:12px;color:var(--muted);font-family:var(--mono)">Brak serwerów</div>';
+    return;
+  }
+  el.innerHTML = servers.map(s => {
+    const cls    = s.online ? 'online' : 'offline';
+    const label  = s.online ? 'ONLINE' : 'OFFLINE';
+    const active = s.id === activeId ? 'active' : '';
+    const autoIcon = s.auto_restart && s.restart_type !== 'none'
+      ? `<span title="Auto-restart: co ${s.auto_restart_interval} min" style="font-size:10px;color:var(--accent);margin-left:2px">⟳</span>`
+      : '';
+    const restartCountBadge = s.auto_restart_count > 0
+      ? `<span title="Auto-restart wykonany ${s.auto_restart_count}×" style="font-family:var(--mono);font-size:9px;color:var(--warn);margin-left:3px">[${s.auto_restart_count}×]</span>`
+      : '';
+    return `<div class="server-card ${active}" onclick="selectServer('${s.id}')">
+      <span class="dot ${cls}"></span>
+      <div class="srv-info">
+        <div class="srv-name">${esc(s.name)}${autoIcon}${restartCountBadge}</div>
+        <div class="srv-url">${esc(s.host)}:${s.port}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+        <span class="srv-badge ${cls}">${label}</span>
+        <div style="display:flex;gap:3px">
+          <button class="icon-btn" style="width:20px;height:20px" title="Edytuj"
+            onclick="event.stopPropagation();openEditModal('${s.id}')">
+            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="icon-btn d" style="width:20px;height:20px" title="Usuń"
+            onclick="event.stopPropagation();removeServer('${s.id}')">
+            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateHdrSrvCount() {
+  const on = servers.filter(s=>s.online).length;
+  document.getElementById('hdr-srv').textContent = `${on}/${servers.length}`;
+}
+
+async function selectServer(id) {
+  activeId = id;
+  const srv = servers.find(s=>s.id===id);
+  renderSidebar();
+
+  document.getElementById('page-title').childNodes[0].textContent = srv ? srv.name : id;
+  document.getElementById('page-sub').textContent =
+    srv ? `${srv.host}:${srv.port} · qBittorrent WebAPI` : '';
+
+  const on = srv && srv.online;
+  ['btn-resume','btn-pause','btn-restart','btn-shutdown'].forEach(b => {
+    document.getElementById(b).disabled = !on;
+  });
+
+  if (on) {
+    addLog('info', `Przełączono na: ${srv.name}`);
+    await refreshStatus();
+    await refreshTorrents();
+    startPoll();
+  } else {
+    addLog('warn', `Serwer ${srv?.name || id} jest offline`);
+    torrents = [];
+    renderTorrents();
+    resetMetrics();
+  }
+}
+
+function updateRestartUnit(prefix) {
+  const t = document.getElementById(`${prefix}-restart-type`).value;
+  const unitWrap = document.getElementById(`${prefix}-unit-wrap`);
+  const sshWrap  = document.getElementById(`${prefix}-ssh-wrap`);
+  if (unitWrap) unitWrap.style.display = (t === 'systemd' || t === 'docker') ? '' : 'none';
+  if (sshWrap)  sshWrap.style.display  = (t === 'systemd' || t === 'docker') ? '' : 'none';
+  // Zmień placeholder unit w zależności od typu
+  const unitInput = document.getElementById(`${prefix}-restart-unit`);
+  if (unitInput) unitInput.placeholder = t === 'docker' ? 'qbittorrent (nazwa kontenera)' : 'qbittorrent-nox';
+}
+
+function updateAutoRestartUI(prefix) {
+  const cb   = document.getElementById(`${prefix}-auto-restart`);
+  const wrap = document.getElementById(`${prefix}-auto-restart-interval-wrap`);
+  if (wrap) wrap.style.display = cb && cb.checked ? 'flex' : 'none';
+}
+
+async function addServer() {
+  const name         = document.getElementById('f-name').value.trim();
+  const host         = document.getElementById('f-host').value.trim();
+  const port         = parseInt(document.getElementById('f-port').value) || 8080;
+  const username     = document.getElementById('f-user').value.trim();
+  const password     = document.getElementById('f-pass').value;
+  const https        = document.getElementById('f-https').value === 'true';
+  const restart_type = document.getElementById('f-restart-type').value;
+  const restart_unit = document.getElementById('f-restart-unit').value.trim();
+  const ssh_user     = document.getElementById('f-ssh-user').value.trim() || 'root';
+  const ssh_port     = parseInt(document.getElementById('f-ssh-port').value) || 22;
+  const ssh_key_path = document.getElementById('f-ssh-key').value.trim();
+  const auto_restart          = document.getElementById('f-auto-restart').checked;
+  const auto_restart_interval = parseInt(document.getElementById('f-auto-restart-interval').value) || 60;
+
+  if (!name || !host) { toast('err', 'Nazwa i host są wymagane'); return; }
+
+  try {
+    const res = await POST('/servers', { name, host, port, username, password, https, restart_type, restart_unit, ssh_user, ssh_port, ssh_key_path, auto_restart, auto_restart_interval });
+    addLog('ok', `Dodano serwer: ${name} (${host}:${port}) restart=${restart_type} auto=${auto_restart}`);
+    toast(res.login_ok ? 'ok' : 'warn', res.message);
+    closeModal();
+    await loadServers();
+    if (res.login_ok) selectServer(res.server.id);
+  } catch(e) {
+    toast('err', 'Błąd: ' + e.message);
+    addLog('err', e.message);
+  }
+}
+
+async function testConn() {
+  const host = document.getElementById('f-host').value || '?';
+  const port = document.getElementById('f-port').value || '8080';
+  addLog('info', `Testowanie ${host}:${port}…`);
+  // Szybki ping bez zapisywania
+  try {
+    await fetch(`/api/ping?host=${encodeURIComponent(host)}&port=${port}`);
+    toast('ok', `Połączenie z ${host}:${port} udane`);
+    addLog('ok', `Ping ${host}:${port} OK`);
+  } catch {
+    toast('warn', 'Nie można się połączyć');
+  }
+}
+
+async function removeServer(id) {
+  try {
+    await DELETE(`/servers/${id}`);
+    if (activeId === id) { activeId = null; torrents = []; renderTorrents(); resetMetrics(); stopPoll(); }
+    addLog('warn', `Usunięto serwer: ${id}`);
+    await loadServers();
+  } catch(e) {
+    toast('err', e.message);
+  }
+}
+
+async function refreshAll() {
+  addLog('info', 'Odświeżanie wszystkich serwerów…');
+  await loadServers();
+  if (activeId) await refreshStatus();
+  toast('ok', 'Odświeżono');
+}
+
+// ══════════════════════════════════════
+//  STATUS & TORRENTS
+// ══════════════════════════════════════
+async function refreshStatus() {
+  if (!activeId) return;
+  try {
+    const s = await GET(`/servers/${activeId}/status`);
+    const tf = s.transfer || {};
+    document.getElementById('m-dl').textContent  = tf.dl_speed_fmt || '0 B/s';
+    document.getElementById('m-ul').textContent  = tf.up_speed_fmt || '0 B/s';
+    document.getElementById('hdr-dl').textContent = tf.dl_speed_fmt || '—';
+    document.getElementById('hdr-ul').textContent = tf.up_speed_fmt || '—';
+    document.getElementById('page-sub').textContent =
+      `${s.server.host}:${s.server.port} · qBittorrent ${s.version || ''} · WebAPI v2`;
+  } catch(e) {
+    addLog('err', 'Status: ' + e.message);
+  }
+}
+
+async function refreshTorrents() {
+  if (!activeId) return;
+  try {
+    torrents = await GET(`/servers/${activeId}/torrents`);
+    updateMetrics();
+    renderTorrents();
+  } catch(e) {
+    addLog('err', 'Torrenty: ' + e.message);
+    torrents = [];
+    renderTorrents();
+  }
+}
+
+function updateMetrics() {
+  const active  = torrents.filter(t => DOWNLOAD_STATES.has(t.state||'')).length;
+  const errors  = torrents.filter(t => ERROR_STATES.has(t.state||'')).length;
+  document.getElementById('m-active').textContent  = active;
+  document.getElementById('m-errors').textContent  = errors;
+  document.getElementById('m-total-sub').textContent = `z ${torrents.length} torrentów`;
+}
+
+function resetMetrics() {
+  ['m-dl','m-ul','m-active','m-errors'].forEach(id => document.getElementById(id).textContent = '—');
+  document.getElementById('hdr-dl').textContent = '—';
+  document.getElementById('hdr-ul').textContent = '—';
+  document.getElementById('m-total-sub').textContent = 'torrentów łącznie';
+}
+
+// Polling co 5s
+function startPoll() {
+  stopPoll();
+  pollTimer = setInterval(async () => {
+    await refreshStatus();
+    await refreshTorrents();
+  }, 5000);
+}
+function stopPoll() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// ══════════════════════════════════════
+//  RENDER TORRENTS
+// ══════════════════════════════════════
+
+// Dokładne stany qBittorrent API (nie używamy .includes – używamy Set)
+const DOWNLOAD_STATES = new Set(['downloading','metaDL','stalledDL','checkingDL','queuedDL','forcedDL']);
+const SEED_STATES     = new Set(['uploading','stalledUP','checkingUP','queuedUP','forcedUP']);
+const PAUSED_STATES   = new Set(['pausedDL','pausedUP']);
+const ERROR_STATES    = new Set(['error','missingFiles','unknown']);
+
+const STATE_MAP = {
+  downloading:'POBIERANIE', forcedDL:'WYMUSZ.',
+  uploading:'SEEDING',      forcedUP:'WYMUSZ.SEED',
+  stalledUP:'SEEDING',      stalledDL:'CZEKA',
+  pausedDL:'PAUZA',         pausedUP:'PAUZA',
+  checkingUP:'SPRAWDŹ',     checkingDL:'SPRAWDŹ', checkingResumeData:'SPRAWDŹ',
+  error:'BŁĄD',             missingFiles:'BRAK PLIKU', unknown:'NIEZNANY',
+  metaDL:'META',            queuedDL:'KOLEJKA',    queuedUP:'KOLEJKA',
+  moving:'PRZEN…',
+};
+const STATE_CLS = {
+  downloading:'downloading', forcedDL:'downloading',
+  uploading:'seeding',       stalledUP:'seeding',   forcedUP:'seeding',
+  stalledDL:'paused',        pausedDL:'paused',     pausedUP:'paused',
+  checkingUP:'checking',     checkingDL:'checking', checkingResumeData:'checking',
+  error:'error',             missingFiles:'error',  unknown:'error',
+};
+const PROGRESS_CLS = {
+  downloading:'active', forcedDL:'active',
+  uploading:'done',     stalledUP:'done', forcedUP:'done',
+  pausedDL:'paused',    pausedUP:'paused',
+  error:'error',        missingFiles:'error',
+};
+
+// Sortowanie
+let sortCol = 'name';   // name | size | progress | dl_speed | up_speed | state | eta
+let sortAsc = true;
+
+function sortBy(col) {
+  if (sortCol === col) {
+    sortAsc = !sortAsc;
+  } else {
+    sortCol = col;
+    sortAsc = col === 'name';   // nazwa domyślnie ASC, liczby DESC
+  }
+  renderTorrents();
+  // Aktualizuj strzałki w nagłówkach
+  document.querySelectorAll('.torrent-table th[data-col]').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.col === col) th.classList.add(sortAsc ? 'sort-asc' : 'sort-desc');
+  });
+}
+
+function applySortFilter(list) {
+  // 1. Filtr statusu
+  const q = document.getElementById('search').value.toLowerCase().trim();
+
+  const filtered = list.filter(t => {
+    const state = t.state || '';
+    if (activeFilter === 'downloading' && !DOWNLOAD_STATES.has(state)) return false;
+    if (activeFilter === 'seeding'     && !SEED_STATES.has(state))     return false;
+    if (activeFilter === 'paused'      && !PAUSED_STATES.has(state))   return false;
+    if (activeFilter === 'error'       && !ERROR_STATES.has(state))    return false;
+    if (q && !(t.name||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  // 2. Sortowanie
+  filtered.sort((a, b) => {
+    let va, vb;
+    switch (sortCol) {
+      case 'name':     va = (a.name||'').toLowerCase(); vb = (b.name||'').toLowerCase(); break;
+      case 'size':     va = a.size||0;      vb = b.size||0;      break;
+      case 'progress': va = a.progress||0;  vb = b.progress||0;  break;
+      case 'dl_speed': va = a.dl_speed||0;  vb = b.dl_speed||0;  break;
+      case 'up_speed': va = a.up_speed||0;  vb = b.up_speed||0;  break;
+      case 'state':    va = a.state||'';    vb = b.state||'';    break;
+      case 'eta':
+        // ∞ (>=8640000) idzie na koniec przy ASC
+        va = (!a.eta || a.eta<0 || a.eta>=8640000) ? 99999999 : a.eta;
+        vb = (!b.eta || b.eta<0 || b.eta>=8640000) ? 99999999 : b.eta;
+        break;
+      default:         va = 0; vb = 0;
+    }
+    if (va < vb) return sortAsc ? -1 :  1;
+    if (va > vb) return sortAsc ?  1 : -1;
+    return 0;
+  });
+
+  return filtered;
+}
+
+function fmtBytes(b) {
+  if (!b) return '—';
+  if (b>=1073741824) return (b/1073741824).toFixed(2)+' GB';
+  if (b>=1048576)    return (b/1048576).toFixed(1)+' MB';
+  if (b>=1024)       return (b/1024).toFixed(0)+' KB';
+  return b+' B';
+}
+function fmtSpeed(bps) {
+  if (!bps) return '<span style="color:var(--muted)">—</span>';
+  if (bps>=1048576) return (bps/1048576).toFixed(1)+' MB/s';
+  if (bps>=1024)    return (bps/1024).toFixed(0)+' KB/s';
+  return bps+' B/s';
+}
+function fmtEta(s) {
+  if (!s || s<0 || s>=8640000) return '∞';
+  if (s<60)   return s+'s';
+  if (s<3600) return Math.floor(s/60)+'m';
+  return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
+}
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// cache arr status per torrent hash: {status:'lib'|'miss'|'none', label:'R'|'S'}
+const arrCache = {};
+
+function arrBadge(arr) {
+  if (!arr) return '<span class="arr-badge none">?</span>';
+  const cls = arr.status === 'lib' ? 'lib' : arr.status === 'miss' ? 'miss' : 'none';
+  const icon = arr.status === 'lib' ? '✔' : arr.status === 'miss' ? '⬡' : '·';
+  return `<span class="arr-badge ${cls}">${arr.label||'?'} ${icon}</span>`;
+}
+
+async function fetchArrStatus(hashes, names) {
+  if (!radarrCfg?.url && !sonarrCfg?.url) return;
+  for (let i = 0; i < hashes.length; i++) {
+    const hash = hashes[i], name = names[i];
+    if (arrCache[hash]) continue;
+    const {title} = parseTorrentName(name);
+    try {
+      let d = null, label = null;
+      if (radarrCfg?.url) {
+        const p = new URLSearchParams({title, year:'', url:radarrCfg.url, key:radarrCfg.key});
+        const r = await fetch('/api/radarr/lookup?'+p);
+        d = await r.json(); label = 'R';
+      }
+      if ((!d || d.error) && sonarrCfg?.url) {
+        const p = new URLSearchParams({title, year:'', url:sonarrCfg.url, key:sonarrCfg.key});
+        const r = await fetch('/api/sonarr/lookup?'+p);
+        d = await r.json(); label = 'S';
+      }
+      if (!d || d.error) { arrCache[hash] = {status:'none', label: label||'?'}; }
+      else if (d.in_radarr || d.in_sonarr) { arrCache[hash] = {status: d.has_file?'lib':'miss', label}; }
+      else { arrCache[hash] = {status:'none', label}; }
+      // re-render badge in existing row without full re-render
+      const rows = document.querySelectorAll('#torrent-body tr');
+      rows.forEach(tr => {
+        const btn = tr.querySelector('.icon-btn.radarr');
+        if (btn && btn.getAttribute('data-hash') === hash) {
+          const cell = tr.cells[2];
+          if (cell) cell.innerHTML = arrBadge(arrCache[hash]);
+        }
+      });
+    } catch(e) { /* ignore */ }
+  }
+}
+
+function renderTorrents() {
+  const data   = applySortFilter(torrents);
+  const tbody  = document.getElementById('torrent-body');
+
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="big">⬡</div>${
+      !activeId ? 'Wybierz serwer z listy' :
+      torrents.length ? 'Brak wyników dla tego filtra / wyszukiwania' : 'Brak torrentów'
+    }</div></td></tr>`;
+    return;
+  }
+
+  // inject cached arr status into each torrent object
+  data.forEach(t => { t.arr = arrCache[t.hash] || null; });
+  tbody.innerHTML = data.map(t => {
+    const pct  = Math.min(100, Math.max(0, t.progress || 0));
+    const pcls = PROGRESS_CLS[t.state] || 'paused';
+    const scls = STATE_CLS[t.state]    || 'paused';
+    const slbl = STATE_MAP[t.state]    || esc(t.state||'—');
+    const cat  = t.category ? `<span class="t-cat">${esc(t.category).toUpperCase()}</span>` : '';
+    // Escape nazwy do onclick (apostrofy)
+    const safeHash = esc(t.hash||'');
+    const safeName = (t.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<tr onclick="selectRow(this)">
+      <td><input type="checkbox" onclick="event.stopPropagation()"></td>
+      <td><div class="t-name">${cat}${esc(t.name)}</div></td>
+      <td style="white-space:nowrap">${arrBadge(t.arr)}</td>
+      <td class="t-size">${fmtBytes(t.size)}</td>
+      <td class="t-progress-wrap">
+        <div class="progress-bar"><div class="progress-fill ${pcls}" style="width:${pct}%"></div></div>
+        <div class="progress-pct">${pct.toFixed(1)}%</div>
+      </td>
+      <td class="t-speed">
+        <span class="dn">▼ ${fmtSpeed(t.dlspeed)}</span>
+        <span class="sep">|</span>
+        <span class="up">▲ ${fmtSpeed(t.upspeed)}</span>
+      </td>
+      <td><span class="badge-status ${scls}">${slbl}</span></td>
+      <td class="t-size">${fmtEta(t.eta)}</td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn g" title="Wznów"  onclick="event.stopPropagation();torrentAction('resume','${safeHash}','${safeName}')">
+            <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+          </button>
+          <button class="icon-btn w" title="Pauza"  onclick="event.stopPropagation();torrentAction('pause','${safeHash}','${safeName}')">
+            <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          </button>
+          <button class="icon-btn" title="Pliki" style="color:var(--accent2)" onclick="event.stopPropagation();openFileList('${safeHash}','${safeName}')">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </button>
+          <button class="icon-btn" title="Limit prędkości" style="color:var(--warn)" onclick="event.stopPropagation();openSpdModal('${safeHash}','${safeName}')">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/></svg>
+          </button>
+          <button class="icon-btn d" title="Usuń"   onclick="event.stopPropagation();torrentAction('delete','${safeHash}','${safeName}')">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+          <button class="icon-btn radarr" data-hash="${safeHash}" title="Szukaj w Radarr/Sonarr" onclick="event.stopPropagation();radarrLookup('${safeName}')">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // fetch arr status for visible torrents (background, non-blocking)
+  const visible_hashes = data.map(t=>t.hash);
+  const visible_names  = data.map(t=>t.name||'');
+  setTimeout(() => fetchArrStatus(visible_hashes, visible_names), 100);
+}
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTorrents();
+}
+
+function selectRow(tr) {
+  tr.classList.toggle('selected');
+  updateBulkBar();
+}
+function selectAll(cb) {
+  document.querySelectorAll('#torrent-body input[type=checkbox]').forEach(c=>c.checked=cb.checked);
+  document.querySelectorAll('#torrent-body tr').forEach(r=>r.classList.toggle('selected',cb.checked));
+  updateBulkBar();
+}
+function updateBulkBar() {
+  const sel = document.querySelectorAll('#torrent-body tr.selected');
+  const bar = document.getElementById('bulk-bar');
+  if (sel.length > 0) {
+    bar.classList.add('visible');
+    document.getElementById('bulk-count').textContent = `${sel.length} zaznaczonych`;
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+function getSelectedHashes() {
+  const rows = document.querySelectorAll('#torrent-body tr.selected');
+  return Array.from(rows).map(tr => {
+    const btn = tr.querySelector('.icon-btn.radarr');
+    return btn ? btn.getAttribute('data-hash') : null;
+  }).filter(Boolean);
+}
+async function bulkAction(action) {
+  const hashes = getSelectedHashes();
+  if (!hashes.length) return;
+  if (action === 'setCategory') { openBulkCat(); return; }
+  if (action === 'delete') { openDelModalBulk(hashes); return; }
+  const ep = action === 'resume' ? 'resume' : 'pause';
+  try {
+    await POST(`/servers/${activeId}/torrents/bulk/${ep}`, { hashes });
+    toast('ok', `${action==='resume'?'Wznowiono':'Zatrzymano'} ${hashes.length} torrentów`);
+  } catch(e) {
+    for (const h of hashes) {
+      try { await POST(`/servers/${activeId}/torrents/${h}/${ep}`); } catch(e2) {}
+    }
+  }
+  await refreshTorrents();
+  document.querySelectorAll('#torrent-body tr').forEach(r=>r.classList.remove('selected'));
+  document.querySelectorAll('#torrent-body input[type=checkbox]').forEach(c=>c.checked=false);
+  updateBulkBar();
+}
+
+// Bulk category
+function openBulkCat()  { document.getElementById('bulk-cat-modal').classList.add('open'); }
+function closeBulkCat() { document.getElementById('bulk-cat-modal').classList.remove('open'); }
+async function confirmBulkCategory() {
+  const cat = document.getElementById('bulk-cat-input').value.trim();
+  const hashes = getSelectedHashes();
+  closeBulkCat();
+  for (const h of hashes) {
+    try { await POST(`/servers/${activeId}/torrents/${h}/category`, { category: cat }); } catch(e) {}
+  }
+  toast('ok', `Kategoria ustawiona dla ${hashes.length} torrentów`);
+  addLog('ok', `Bulk kategoria "${cat}" → ${hashes.length} torrentów`);
+  await refreshTorrents();
+}
+
+// ══════════════════════════════════════
+//  TORRENT ACTIONS
+// ══════════════════════════════════════
+async function torrentAction(action, hash, name) {
+  const short = name.length>35 ? name.slice(0,35)+'…' : name;
+  try {
+    if (action==='resume') {
+      await POST(`/servers/${activeId}/torrents/${hash}/resume`);
+      toast('ok', `Wznowiono: ${short}`);
+      addLog('ok', `Wznowiono: ${short}`);
+    } else if (action==='pause') {
+      await POST(`/servers/${activeId}/torrents/${hash}/pause`);
+      toast('warn', `Zatrzymano: ${short}`);
+      addLog('warn', `Zatrzymano: ${short}`);
+    } else if (action==='delete') {
+      openDelModal(hash, name);
+      return;
+    }
+    await refreshTorrents();
+  } catch(e) {
+    toast('err', e.message);
+    addLog('err', e.message);
+  }
+}
+
+// ══════════════════════════════════════
+//  DELETE MODAL
+// ══════════════════════════════════════
+let _delHash = '', _delName = '';
+let _delBulkHashes = [];   // pusta = single, niepusta = bulk
+
+function openDelModal(hash, name) {
+  _delHash = hash; _delName = name; _delBulkHashes = [];
+  document.getElementById('del-modal-name').textContent = name.length > 80 ? name.slice(0,80)+'…' : name;
+  document.querySelector('input[name=del-mode][value=torrent]').checked = true;
+  document.getElementById('del-modal').classList.add('open');
+}
+
+function openDelModalBulk(hashes) {
+  _delHash = ''; _delName = ''; _delBulkHashes = hashes;
+  document.getElementById('del-modal-name').textContent = `${hashes.length} zaznaczonych torrentów`;
+  document.querySelector('input[name=del-mode][value=torrent]').checked = true;
+  document.getElementById('del-modal').classList.add('open');
+}
+
+function closeDelModal() {
+  document.getElementById('del-modal').classList.remove('open');
+}
+
+async function confirmDelete() {
+  const delFiles = document.querySelector('input[name=del-mode]:checked').value === 'files';
+  closeDelModal();
+
+  // BULK
+  if (_delBulkHashes.length) {
+    const n = _delBulkHashes.length;
+    let ok = 0;
+    for (const h of _delBulkHashes) {
+      try {
+        await DELETE(`/servers/${activeId}/torrents/${h}` + (delFiles ? '?delete_files=true' : ''));
+        ok++;
+      } catch(e) {}
+    }
+    toast('err', `Usunięto${delFiles?' + pliki':''}: ${ok}/${n} torrentów`);
+    addLog('warn', `Bulk usuń${delFiles?' (z plikami)':''}: ${ok}/${n}`);
+    // wyczyść zaznaczenie
+    document.querySelectorAll('#torrent-body tr').forEach(r=>r.classList.remove('selected'));
+    document.querySelectorAll('#torrent-body input[type=checkbox]').forEach(c=>c.checked=false);
+    updateBulkBar();
+    await refreshTorrents();
+    return;
+  }
+
+  // SINGLE
+  const short = _delName.length>35 ? _delName.slice(0,35)+'…' : _delName;
+  try {
+    await DELETE(`/servers/${activeId}/torrents/${_delHash}` + (delFiles ? '?delete_files=true' : ''));
+    toast('err', `Usunięto${delFiles?' + pliki':''}: ${short}`);
+    addLog('warn', `Usunięto${delFiles?' (z plikami)':''}: ${short}`);
+    await refreshTorrents();
+  } catch(e) {
+    toast('err', e.message);
+    addLog('err', e.message);
+  }
+}
+
+async function globalAction(action) {
+  const srv = servers.find(s=>s.id===activeId);
+  const sname = srv?.name || activeId;
+  try {
+    if (action==='resume_all') {
+      await POST(`/servers/${activeId}/resume_all`);
+      toast('ok', 'Wznowiono wszystkie'); addLog('ok',`[${sname}] Wznowiono wszystkie`);
+    } else if (action==='pause_all') {
+      await POST(`/servers/${activeId}/pause_all`);
+      toast('warn','Pauza wszystkich'); addLog('warn',`[${sname}] Pauza wszystkich`);
+    } else if (action==='restart') {
+      const srvInfo    = servers.find(s=>s.id===activeId);
+      const rtype      = srvInfo?.restart_type || 'none';
+      const rtypeLabel = {none:'brak (ręczny)', docker:'Docker', systemd:'systemd'}[rtype] || rtype;
+      if (!confirm(`Zrestartować qBittorrent na ${sname}?\n\nMetoda restartu: ${rtypeLabel}\nPanel czeka na reconnect przez ~75s.`)) return;
+
+      let res;
+      try { res = await POST(`/servers/${activeId}/restart`); }
+      catch(e) { toast('err','Błąd restartu: '+e.message); addLog('err',e.message); return; }
+
+      const method  = res.restart_method || 'none';
+      const success = res.success;
+      const detail  = res.detail || '';
+
+      if (method === 'none') {
+        toast('warn', '⚠ Brak metody restartu — skonfiguruj serwer (Docker/systemd)');
+        addLog('warn', `[${sname}] Restart: brak metody. ${detail}`);
+      } else if (method === 'systemd' && !success) {
+        toast('err', `Restart systemd nieudany — ${detail}`);
+        addLog('err', `[${sname}] Restart systemd FAILED: ${detail}`);
+      } else {
+        toast('info', `Restart (${method}) wysłany — czekam na reconnect…`);
+        addLog('info', `[${sname}] Restart ${method}: ${detail}`);
+      }
+
+      stopPoll();
+      let attempts = 0;
+      const reconnectTimer = setInterval(async () => {
+        attempts++;
+        try {
+          await loadServers();
+          const s2 = servers.find(s => s.id === activeId);
+          if (s2 && s2.online) {
+            clearInterval(reconnectTimer);
+            toast('ok', `✓ ${sname} — online po ${attempts*5}s`);
+            addLog('ok', `[${sname}] Reconnect OK (${attempts*5}s)`);
+            await refreshStatus();
+            await refreshTorrents();
+            startPoll();
+          } else if (attempts >= 15) {
+            clearInterval(reconnectTimer);
+            const hint = method === 'none' ? 'Uruchom qBittorrent ręcznie.'
+              : method === 'docker'        ? 'Sprawdź restart policy kontenera (restart: always/unless-stopped).'
+              : `Sprawdź: systemctl status ${srvInfo?.restart_unit||'qbittorrent-nox'}`;
+            toast('err', `${sname} offline po 75s. ${hint}`);
+            addLog('err', `[${sname}] Reconnect timeout. ${hint}`);
+          }
+        } catch(e) {
+          if (attempts >= 15) clearInterval(reconnectTimer);
+        }
+      }, 5000);
+    } else if (action==='shutdown') {
+      if (!confirm('Wyłączyć qBittorrent na '+sname+'?')) return;
+      await POST(`/servers/${activeId}/shutdown`);
+      toast('err','qBittorrent wyłączony'); addLog('err',`[${sname}] Shutdown`);
+      stopPoll(); resetMetrics();
+    }
+    await refreshTorrents();
+  } catch(e) {
+    toast('err', e.message);
+    addLog('err', e.message);
+  }
+}
+
+// ══════════════════════════════════════
+//  MODAL
+// ══════════════════════════════════════
+function openModal()  { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModalBg(e) { if(e.target===document.getElementById('modal')) closeModal(); }
+
+// ══════════════════════════════════════
+//  THEME TOGGLE
+// ══════════════════════════════════════
+function toggleTheme() {
+  const light = document.body.classList.toggle('light');
+  localStorage.setItem('theme', light ? 'light' : 'dark');
+  const btn = document.getElementById('theme-btn');
+  btn.innerHTML = light
+    ? '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
+    : '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>';
+  drawSpeedChart();
+}
+(function initTheme() {
+  if (localStorage.getItem('theme') === 'light') toggleTheme();
+})();
+
+// ══════════════════════════════════════
+//  SPEED CHART
+// ══════════════════════════════════════
+const speedHistory = { dl: new Array(60).fill(0), ul: new Array(60).fill(0) };
+let chartRAF = null;
+
+function pushSpeedSample(dl, ul) {
+  speedHistory.dl.push(dl); speedHistory.dl.shift();
+  speedHistory.ul.push(ul); speedHistory.ul.shift();
+  document.getElementById('chart-dl-cur').textContent = fmtSpeed2(dl);
+  document.getElementById('chart-ul-cur').textContent = fmtSpeed2(ul);
+  drawSpeedChart();
+}
+
+function fmtSpeed2(bps) {
+  if (!bps) return '0 B/s';
+  if (bps>=1048576) return (bps/1048576).toFixed(1)+' MB/s';
+  if (bps>=1024)    return (bps/1024).toFixed(0)+' KB/s';
+  return bps+' B/s';
+}
+
+function drawSpeedChart() {
+  const canvas = document.getElementById('speed-canvas');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.parentElement.clientWidth - 32;
+  const H = 60;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const light = document.body.classList.contains('light');
+  const gridColor = light ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.04)';
+  // Grid lines
+  for (let i = 0; i <= 4; i++) {
+    ctx.beginPath(); ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+    ctx.moveTo(0, i * H/4); ctx.lineTo(W, i * H/4); ctx.stroke();
+  }
+
+  const maxVal = Math.max(...speedHistory.dl, ...speedHistory.ul, 1024);
+  function drawLine(data, color) {
+    ctx.beginPath();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    data.forEach((v, i) => {
+      const x = (i / (data.length - 1)) * W;
+      const y = H - (v / maxVal) * (H - 4);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    // Fill
+    ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+    ctx.fillStyle = color.replace(')', ', .12)').replace('rgb', 'rgba');
+    ctx.fill();
+  }
+  drawLine(speedHistory.ul, 'rgb(245,166,35)');
+  drawLine(speedHistory.dl, 'rgb(0,184,255)');
+}
+
+// ══════════════════════════════════════
+//  POLL INTERVAL
+// ══════════════════════════════════════
+let pollInterval = 5000;
+function changePollInterval(val) {
+  pollInterval = parseInt(val);
+  if (activeId) { stopPoll(); startPoll(); }
+}
+
+// ══════════════════════════════════════
+//  NOTIFICATIONS
+// ══════════════════════════════════════
+let notifEnabled = false;
+const seenCompleted = new Set();
+
+function toggleNotifications() {
+  if (!notifEnabled) {
+    if (!('Notification' in window)) { toast('warn','Przeglądarka nie obsługuje powiadomień'); return; }
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') {
+        notifEnabled = true;
+        document.getElementById('notif-btn').classList.add('active');
+        toast('ok', 'Powiadomienia włączone');
+        addLog('ok', 'Powiadomienia: włączone');
+      } else {
+        toast('warn', 'Brak uprawnień do powiadomień');
+      }
+    });
+  } else {
+    notifEnabled = false;
+    document.getElementById('notif-btn').classList.remove('active');
+    toast('info', 'Powiadomienia wyłączone');
+    addLog('info', 'Powiadomienia: wyłączone');
+  }
+}
+
+function checkCompletedTorrents(list) {
+  if (!notifEnabled) return;
+  list.forEach(t => {
+    if (t.progress >= 100 && (t.state === 'uploading' || t.state === 'stalledUP' || t.state === 'forcedUP')) {
+      if (!seenCompleted.has(t.hash)) {
+        seenCompleted.add(t.hash);
+        if (seenCompleted.size > 1) { // nie powiadamiaj przy pierwszym załadowaniu
+          new Notification('qBitCtrl – ukończono', {
+            body: t.name,
+            icon: '/favicon.ico'
+          });
+        }
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════
+//  ADD TORRENT
+// ══════════════════════════════════════
+let _atFileData = null;
+let _atFileName = '';
+
+function openAddTorrentModal() {
+  if (!activeId) { toast('warn', 'Wybierz najpierw serwer'); return; }
+  _atFileData = null; _atFileName = '';
+  document.getElementById('at-magnet').value = '';
+  document.getElementById('at-category').value = '';
+  document.getElementById('at-savepath').value = '';
+  document.getElementById('at-paused').checked = false;
+  document.getElementById('at-file-name').textContent = '';
+  document.getElementById('add-torrent-modal').classList.add('open');
+}
+function closeAddTorrent() { document.getElementById('add-torrent-modal').classList.remove('open'); }
+
+function switchAddTab(name, btn) {
+  document.querySelectorAll('.add-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.add-tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('add-tab-'+name).classList.add('active');
+}
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('at-drop').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) readTorrentFile(file);
+}
+function handleFileSelect(input) {
+  if (input.files[0]) readTorrentFile(input.files[0]);
+}
+function readTorrentFile(file) {
+  _atFileName = file.name;
+  document.getElementById('at-file-name').textContent = '📎 ' + file.name;
+  const reader = new FileReader();
+  reader.onload = e => { _atFileData = e.target.result.split(',')[1]; };
+  reader.readAsDataURL(file);
+}
+
+async function submitAddTorrent() {
+  if (!activeId) return;
+  const activeTab = document.querySelector('.add-tab-panel.active').id;
+  const category  = document.getElementById('at-category').value.trim();
+  const savepath  = document.getElementById('at-savepath').value.trim();
+  const paused    = document.getElementById('at-paused').checked;
+
+  try {
+    if (activeTab === 'add-tab-magnet') {
+      const magnet = document.getElementById('at-magnet').value.trim();
+      if (!magnet) { toast('err','Wpisz magnet link lub URL'); return; }
+      await POST(`/servers/${activeId}/torrents/add`, { magnet, category, savepath, paused });
+    } else {
+      if (!_atFileData) { toast('err','Wybierz plik .torrent'); return; }
+      await POST(`/servers/${activeId}/torrents/add`, { file: _atFileData, filename: _atFileName, category, savepath, paused });
+    }
+    toast('ok', 'Torrent dodany'); addLog('ok', 'Dodano torrent');
+    closeAddTorrent();
+    setTimeout(refreshTorrents, 1500);
+  } catch(e) {
+    toast('err', e.message); addLog('err', e.message);
+  }
+}
+
+// ══════════════════════════════════════
+//  FILE LIST
+// ══════════════════════════════════════
+function closeFileModal() { document.getElementById('file-modal').classList.remove('open'); }
+
+async function openFileList(hash, name) {
+  const short = name.length > 50 ? name.slice(0,50)+'…' : name;
+  document.getElementById('file-modal-title').textContent = short;
+  document.getElementById('file-modal-body').innerHTML =
+    '<div style="padding:20px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px"><div class="spinner"></div> Ładowanie…</div>';
+  document.getElementById('file-modal').classList.add('open');
+  try {
+    const files = await GET(`/servers/${activeId}/torrents/${hash}/files`);
+    if (!files.length) {
+      document.getElementById('file-modal-body').innerHTML =
+        '<div style="padding:20px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px">Brak plików</div>';
+      return;
+    }
+    document.getElementById('file-modal-body').innerHTML = files.map(f => {
+      const pct = Math.min(100, Math.round((f.progress||0)*100));
+      return `<div class="file-row">
+        <div class="file-name">${esc(f.name)}</div>
+        <div class="file-prog">
+          <div class="file-prog-bar"><div class="file-prog-fill" style="width:${pct}%"></div></div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;margin-top:2px">${pct}%</div>
+        </div>
+        <div class="file-size">${fmtBytes(f.size)}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('file-modal-body').innerHTML =
+      `<div style="padding:20px;text-align:center;color:var(--danger);font-family:var(--mono);font-size:12px">${esc(e.message)}</div>`;
+  }
+}
+
+// ══════════════════════════════════════
+//  SPEED LIMITS MODAL
+// ══════════════════════════════════════
+let _spdHash = '', _spdName = '';
+
+function updateSpdLabel(dir, val) {
+  const v = parseInt(val);
+  const lbl = v === 0 ? 'bez limitu' : fmtSpeed2(v * 1024);
+  document.getElementById(`spd-${dir}-val`).textContent = lbl;
+}
+
+function openSpdModal(hash, name) {
+  _spdHash = hash || ''; _spdName = name || '';
+  const scope = hash ? `(${name ? name.slice(0,30)+'…' : hash.slice(0,8)})` : '(globalny)';
+  document.getElementById('spd-modal-scope').textContent = scope;
+  document.getElementById('spd-dl').value = 0;
+  document.getElementById('spd-ul').value = 0;
+  updateSpdLabel('dl', 0); updateSpdLabel('ul', 0);
+  document.getElementById('spd-modal').classList.add('open');
+}
+function closeSpdModal() { document.getElementById('spd-modal').classList.remove('open'); }
+
+function resetSpdLimits() {
+  document.getElementById('spd-dl').value = 0;
+  document.getElementById('spd-ul').value = 0;
+  updateSpdLabel('dl',0); updateSpdLabel('ul',0);
+  applySpdLimits();
+}
+
+async function applySpdLimits() {
+  const dl = parseInt(document.getElementById('spd-dl').value) * 1024;
+  const ul = parseInt(document.getElementById('spd-ul').value) * 1024;
+  closeSpdModal();
+  try {
+    if (_spdHash) {
+      await POST(`/servers/${activeId}/torrents/${_spdHash}/speed_limits`, { dl_limit: dl, up_limit: ul });
+      toast('ok', `Limit ustawiony: ${_spdName.slice(0,30)}`);
+      addLog('ok', `Limit ${fmtSpeed2(dl)}↓ ${fmtSpeed2(ul)}↑ → ${_spdName.slice(0,30)}`);
+    } else {
+      await PATCH(`/servers/${activeId}/speed_limits`, { dl_limit: dl, up_limit: ul });
+      toast('ok', 'Globalny limit prędkości ustawiony');
+      addLog('ok', `Globalny limit: ${fmtSpeed2(dl)}↓ ${fmtSpeed2(ul)}↑`);
+    }
+  } catch(e) { toast('err', e.message); addLog('err', e.message); }
+}
+
+// ══════════════════════════════════════
+//  EDIT SERVER
+// ══════════════════════════════════════
+function openEditModal(id) {
+  const s = servers.find(s=>s.id===id);
+  if (!s) return;
+  document.getElementById('edit-srv-id').value        = id;
+  document.getElementById('edit-name').value          = s.name;
+  document.getElementById('edit-host').value          = s.host;
+  document.getElementById('edit-port').value          = s.port;
+  document.getElementById('edit-user').value          = s.username || '';
+  document.getElementById('edit-pass').value          = '';
+  document.getElementById('edit-https').value         = String(s.https||false);
+  document.getElementById('edit-restart-type').value      = s.restart_type || 'none';
+  document.getElementById('edit-restart-unit').value      = s.restart_unit || '';
+  document.getElementById('edit-ssh-user').value          = s.ssh_user || 'root';
+  document.getElementById('edit-ssh-port').value          = s.ssh_port || 22;
+  document.getElementById('edit-ssh-key').value           = s.ssh_key_path || '';
+  document.getElementById('edit-auto-restart').checked     = !!s.auto_restart;
+  document.getElementById('edit-auto-restart-interval').value = s.auto_restart_interval || 60;
+  updateRestartUnit('edit');
+  updateAutoRestartUI('edit');
+  // Pokaż statystyki auto-restartu
+  const stats = document.getElementById('edit-auto-restart-stats');
+  if (s.auto_restart_count > 0) {
+    const last = s.last_auto_restart ? new Date(s.last_auto_restart*1000).toLocaleString('pl') : '—';
+    stats.textContent = `Restart wykonany ${s.auto_restart_count}× | ostatni: ${last}`;
+    stats.style.color = 'var(--warn)';
+  } else if (s.auto_restart) {
+    // Pobierz kiedy następny restart
+    fetch(`/api/servers/${id}/auto_restart`).then(r=>r.json()).then(d => {
+      if (d.next_restart_in_s !== null && d.next_restart_in_s !== undefined) {
+        const min = Math.round(d.next_restart_in_s / 60);
+        const h   = Math.floor(min / 60);
+        const m   = min % 60;
+        const eta = h > 0 ? `${h}h ${m}min` : `${m}min`;
+        stats.textContent = `✓ Aktywny — następny restart za ~${eta}`;
+        stats.style.color = 'var(--accent)';
+      }
+    }).catch(()=>{});
+    stats.textContent = '✓ Auto-restart aktywny';
+    stats.style.color = 'var(--accent)';
+  } else {
+    stats.textContent = '⚠ Wymaga skonfigurowanego typu restartu (Docker lub systemd)';
+    stats.style.color = 'var(--muted)';
+  }
+  document.getElementById('edit-modal').classList.add('open');
+}
+async function testSsh(id) {
+  if (!id) { toast('warn', 'Najpierw zapisz serwer'); return; }
+  toast('info', 'Testuję SSH…');
+  try {
+    const r = await fetch(`/api/servers/${id}/test_ssh`);
+    const d = await r.json();
+    if (d.ok) {
+      toast('ok', `SSH OK: ${d.output}`);
+      addLog('ok', `SSH test ${id}: ${d.output}`);
+    } else {
+      toast('err', `SSH błąd: ${d.error}`);
+      addLog('err', `SSH test ${id}: ${d.error}`);
+    }
+  } catch(e) { toast('err', e.message); }
+}
+
+function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); }
+
+async function saveEditServer() {
+  const id               = document.getElementById('edit-srv-id').value;
+  const name             = document.getElementById('edit-name').value.trim();
+  const host             = document.getElementById('edit-host').value.trim();
+  const port             = parseInt(document.getElementById('edit-port').value) || 8080;
+  const username         = document.getElementById('edit-user').value.trim();
+  const password         = document.getElementById('edit-pass').value;
+  const https            = document.getElementById('edit-https').value === 'true';
+  const restart_type          = document.getElementById('edit-restart-type').value;
+  const restart_unit          = document.getElementById('edit-restart-unit').value.trim();
+  const ssh_user              = document.getElementById('edit-ssh-user').value.trim() || 'root';
+  const ssh_port              = parseInt(document.getElementById('edit-ssh-port').value) || 22;
+  const ssh_key_path          = document.getElementById('edit-ssh-key').value.trim();
+  const auto_restart          = document.getElementById('edit-auto-restart').checked;
+  const auto_restart_interval = parseInt(document.getElementById('edit-auto-restart-interval').value) || 60;
+  if (!name || !host) { toast('err','Nazwa i host są wymagane'); return; }
+  try {
+    await PATCH(`/servers/${id}`, { name, host, port, username, password: password||undefined, https, restart_type, restart_unit, ssh_user, ssh_port, ssh_key_path, auto_restart, auto_restart_interval });
+    closeEditModal();
+    toast('ok', `Zaktualizowano: ${name}`);
+    addLog('ok', `Edytowano serwer: ${name} restart=${restart_type} auto=${auto_restart} co=${auto_restart_interval}min`);
+    await loadServers();
+  } catch(e) {
+    toast('err', e.message); addLog('err', e.message);
+  }
+}
+
+// ══════════════════════════════════════
+//  EXPORT CSV
+// ══════════════════════════════════════
+function exportTorrents() {
+  if (!torrents.length) { toast('warn','Brak torrentów do eksportu'); return; }
+  const cols = ['name','state','progress','size','dl_speed','up_speed','eta','ratio','category'];
+  const header = cols.join(',');
+  const rows = torrents.map(t =>
+    cols.map(c => {
+      const v = t[c] ?? '';
+      return typeof v === 'string' && v.includes(',') ? `"${v}"` : v;
+    }).join(',')
+  );
+  const csv = [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `torrenty_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('ok','Wyeksportowano CSV'); addLog('ok',`Eksport: ${torrents.length} torrentów`);
+}
+
+// ══════════════════════════════════════
+//  ARR QUEUE PANEL
+// ══════════════════════════════════════
+async function refreshArrQueue() {
+  const panel = document.getElementById('arr-queue-panel');
+  const body  = document.getElementById('arr-queue-body');
+  if (!radarrCfg?.url && !sonarrCfg?.url) return;
+  panel.style.display = '';
+  body.innerHTML = '<div style="padding:10px 20px;color:var(--muted);font-family:var(--mono);font-size:11px">Ładowanie…</div>';
+  const items = [];
+  try {
+    if (radarrCfg?.url) {
+      const r = await fetch(`/api/radarr/queue?url=${encodeURIComponent(radarrCfg.url)}&key=${encodeURIComponent(radarrCfg.key)}`);
+      const d = await r.json();
+      (d.records||[]).forEach(i => items.push({src:'R', title: i.title||i.movie?.title||'?',
+        status: i.status, pct: i.sizeleft && i.size ? Math.round((1-i.sizeleft/i.size)*100) : 0}));
+    }
+    if (sonarrCfg?.url) {
+      const r = await fetch(`/api/sonarr/queue?url=${encodeURIComponent(sonarrCfg.url)}&key=${encodeURIComponent(sonarrCfg.key)}`);
+      const d = await r.json();
+      (d.records||[]).forEach(i => items.push({src:'S', title: i.title||i.series?.title||'?',
+        status: i.status, pct: i.sizeleft && i.size ? Math.round((1-i.sizeleft/i.size)*100) : 0}));
+    }
+  } catch(e) {}
+  if (!items.length) {
+    body.innerHTML = '<div style="padding:10px 20px;color:var(--muted);font-family:var(--mono);font-size:11px">Kolejka pusta</div>';
+    return;
+  }
+  body.innerHTML = items.map(i => `
+    <div class="arr-queue-row">
+      <span class="arr-badge ${i.src==='R'?'miss':'lib'}" style="flex-shrink:0">${i.src}</span>
+      <span class="arr-queue-name">${esc(i.title)}</span>
+      <span class="arr-queue-status">${esc(i.status||'')}</span>
+      <span class="arr-queue-pct">${i.pct}%</span>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════
+//  PATCH REFRESHSTATUS – push to chart
+// ══════════════════════════════════════
+const _origRefreshStatus = refreshStatus;
+refreshStatus = async function() {
+  if (!activeId) return;
+  try {
+    const s = await GET(`/servers/${activeId}/status`);
+    const tf = s.transfer || {};
+    const dl = tf.dl_speed || 0;
+    const ul = tf.up_speed || 0;
+    document.getElementById('m-dl').textContent  = tf.dl_speed_fmt || '0 B/s';
+    document.getElementById('m-ul').textContent  = tf.up_speed_fmt || '0 B/s';
+    document.getElementById('hdr-dl').textContent = tf.dl_speed_fmt || '—';
+    document.getElementById('hdr-ul').textContent = tf.up_speed_fmt || '—';
+    document.getElementById('page-sub').textContent =
+      `${s.server.host}:${s.server.port} · qBittorrent ${s.version || ''} · WebAPI v2`;
+    // Show chart when server selected
+    document.getElementById('chart-wrap').style.display = '';
+    pushSpeedSample(dl, ul);
+  } catch(e) {
+    addLog('err', 'Status: ' + e.message);
+  }
+};
+
+// Patch startPoll to use configurable interval
+const _origStartPoll = startPoll;
+startPoll = function() {
+  stopPoll();
+  pollTimer = setInterval(async () => {
+    await refreshStatus();
+    await refreshTorrents();
+  }, pollInterval);
+};
+
+// Patch refreshTorrents to check notifications
+const _origRefreshTorrents = refreshTorrents;
+refreshTorrents = async function() {
+  if (!activeId) return;
+  try {
+    torrents = await GET(`/servers/${activeId}/torrents`);
+    updateMetrics();
+    renderTorrents();
+    checkCompletedTorrents(torrents);
+  } catch(e) {
+    addLog('err', 'Torrenty: ' + e.message);
+    torrents = [];
+    renderTorrents();
+  }
+};
+
+
+// ══════════════════════════════════════
+//  i18n – WIELOJĘZYKOWOŚĆ
+// ══════════════════════════════════════
+const LANGS = {
+  pl: {
+    torrents: 'TORRENTY', servers: 'SERWERY', add_torrent: '+ DODAJ TORRENT',
+    add_server: '+ SERWER', refresh_all: 'ODŚWIEŻ WSZYSTKIE',
+    speed_limits: 'LIMITY PRĘDKOŚCI', export_csv: 'EKSPORT CSV',
+    download: 'Pobieranie', upload: 'Wysyłanie', active: 'Aktywne', errors: 'Błędy',
+    filter_all: 'WSZYSTKIE', filter_dl: 'POBIERANIE', filter_seed: 'SEEDING',
+    filter_pause: 'PAUZA', filter_err: 'BŁĘDY',
+    name: 'NAZWA', size: 'ROZMIAR', progress: 'POSTĘP', speed_dl: 'PRĘDKOŚĆ ▼',
+    status: 'STATUS', eta: 'ETA', actions: 'AKCJE',
+    no_server: 'Wybierz serwer', no_conn: '— brak połączenia —',
+    no_servers: 'Brak serwerów', event_log: 'LOG ZDARZEŃ',
+    clear: 'WYCZYŚĆ', search_placeholder: 'Filtruj torrenty...',
+    not_configured: 'nie skonfigurowano',
+    // ARR tab
+    arr_cfg: 'KONFIGURACJA', arr_search: 'WYSZUKAJ I DODAJ',
+    arr_queue: 'KOLEJKA POBIERANIA', arr_recent_r: 'OSTATNIE FILMY',
+    arr_recent_s: 'OSTATNIE SERIALE', arr_health: 'HEALTH CHECK',
+    arr_search_ph: 'Szukaj filmu lub serialu…', arr_search_btn: 'SZUKAJ',
+    arr_health_ok: '✔ Brak problemów', arr_in_lib: '✔ W bibliotece',
+    arr_missing: '⚠ Brak pliku', arr_not_added: '✕ Nie dodano',
+    arr_add_radarr: '+ RADARR', arr_add_sonarr: '+ SONARR',
+    arr_search_radarr: '⟳ SZUKAJ', arr_no_results: 'Brak wyników',
+    arr_search_hint: '🔍 Wpisz tytuł i naciśnij SZUKAJ',
+    arr_queue_empty: 'Kolejka pusta', arr_health_hint: 'Kliknij ↻ aby sprawdzić',
+    arr_edit: '⚙ EDYTUJ', arr_refresh: '↻ ODŚWIEŻ', arr_check: '↻ SPRAWDŹ',
+    arr_loading: 'Ładowanie…',
+    // password
+    pass_title: 'Zmień hasło', pass_old: 'Aktualne hasło', pass_new: 'Nowe hasło',
+    pass_confirm: 'Powtórz nowe hasło', pass_cancel: 'ANULUJ', pass_submit: 'ZMIEŃ HASŁO',
+    pass_mismatch: 'Hasła nie są takie same', pass_empty: 'Wszystkie pola są wymagane',
+    pass_ok: 'Hasło zmienione — wylogowywanie…', pass_err: 'Błędne aktualne hasło',
+  },
+  en: {
+    torrents: 'TORRENTS', servers: 'SERVERS', add_torrent: '+ ADD TORRENT',
+    add_server: '+ SERVER', refresh_all: 'REFRESH ALL',
+    speed_limits: 'SPEED LIMITS', export_csv: 'EXPORT CSV',
+    download: 'Download', upload: 'Upload', active: 'Active', errors: 'Errors',
+    filter_all: 'ALL', filter_dl: 'DOWNLOADING', filter_seed: 'SEEDING',
+    filter_pause: 'PAUSED', filter_err: 'ERRORS',
+    name: 'NAME', size: 'SIZE', progress: 'PROGRESS', speed_dl: 'SPEED ▼',
+    status: 'STATUS', eta: 'ETA', actions: 'ACTIONS',
+    no_server: 'Select a server', no_conn: '— not connected —',
+    no_servers: 'No servers', event_log: 'EVENT LOG',
+    clear: 'CLEAR', search_placeholder: 'Filter torrents...',
+    not_configured: 'not configured',
+    arr_cfg: 'CONFIGURATION', arr_search: 'SEARCH & ADD',
+    arr_queue: 'DOWNLOAD QUEUE', arr_recent_r: 'RECENT MOVIES',
+    arr_recent_s: 'RECENT SERIES', arr_health: 'HEALTH CHECK',
+    arr_search_ph: 'Search movie or series…', arr_search_btn: 'SEARCH',
+    arr_health_ok: '✔ No issues', arr_in_lib: '✔ In library',
+    arr_missing: '⚠ Missing file', arr_not_added: '✕ Not added',
+    arr_add_radarr: '+ RADARR', arr_add_sonarr: '+ SONARR',
+    arr_search_radarr: '⟳ SEARCH', arr_no_results: 'No results',
+    arr_search_hint: '🔍 Type a title and press SEARCH',
+    arr_queue_empty: 'Queue is empty', arr_health_hint: 'Click ↻ to check',
+    arr_edit: '⚙ EDIT', arr_refresh: '↻ REFRESH', arr_check: '↻ CHECK',
+    arr_loading: 'Loading…',
+    pass_title: 'Change password', pass_old: 'Current password',
+    pass_new: 'New password', pass_confirm: 'Confirm new password',
+    pass_cancel: 'CANCEL', pass_submit: 'CHANGE PASSWORD',
+    pass_mismatch: 'Passwords do not match', pass_empty: 'All fields are required',
+    pass_ok: 'Password changed — logging out…', pass_err: 'Wrong current password',
+  }
+};
+
+let currentLang = localStorage.getItem('qbitctrl_lang') || 'pl';
+
+function t(key) { return (LANGS[currentLang]||LANGS.pl)[key] || key; }
+
+function applyLang() {
+  document.getElementById('lang-btn').textContent = currentLang.toUpperCase();
+  // Static text nodes via data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (LANGS[currentLang][k]) el.textContent = LANGS[currentLang][k];
+  });
+  // Specific elements
+  const m = {
+    'tab-torrents-lbl': t('torrents'),
+    'btn-add-torrent':  t('add_torrent'),
+    'btn-add-server':   t('add_server'),
+    'hdr-srv':          null, // keep dynamic
+    'search':           null,
+  };
+  // Labels with IDs
+  safeSet('arr-cfg-title', t('arr_cfg'));
+  safeSet('arr-cfg-btn', t('arr_edit'));
+  safeSet('arr-search-title', t('arr_search'));
+  safeSet('arr-search-btn', t('arr_search_btn'));
+  safeSet('arr-queue-title2', t('arr_queue'));
+  safeSet('arr-queue-refresh-btn', t('arr_refresh'));
+  safeSet('arr-recent-radarr-title', t('arr_recent_r'));
+  safeSet('arr-recent-sonarr-title', t('arr_recent_s'));
+  safeSet('arr-health-title', t('arr_health'));
+  safeSet('arr-health-btn', t('arr_check'));
+  safeSet('pass-modal-title-txt', t('pass_title'));
+  safeSet('pass-old-lbl', t('pass_old'));
+  safeSet('pass-new-lbl', t('pass_new'));
+  safeSet('pass-confirm-lbl', t('pass_confirm'));
+  safeSet('pass-cancel-btn', t('pass_cancel'));
+  safeSet('pass-submit-btn', t('pass_submit'));
+  const sp = document.getElementById('search');
+  if (sp) sp.placeholder = t('search_placeholder');
+  const asi = document.getElementById('arr-search-input');
+  if (asi) asi.placeholder = t('arr_search_ph');
+  // Filter buttons text
+  const fmap = [['all',t('filter_all')],['downloading',t('filter_dl')],
+                ['seeding',t('filter_seed')],['paused',t('filter_pause')],['error',t('filter_err')]];
+  fmap.forEach(([f,lbl]) => {
+    const b = document.querySelector(`.filter-btn[onclick*="'${f}'"]`);
+    if (b) b.textContent = lbl;
+  });
+}
+
+function safeSet(id, val) {
+  const el = document.getElementById(id);
+  if (el && val !== null) el.textContent = val;
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'pl' ? 'en' : 'pl';
+  localStorage.setItem('qbitctrl_lang', currentLang);
+  applyLang();
+}
+
+// ══════════════════════════════════════
+//  VIEW SWITCHER (Torrenty ↔ ARR)
+// ══════════════════════════════════════
+let currentView = 'torrents';
+function switchView(view) {
+  currentView = view;
+  document.getElementById('view-torrents').style.display = view === 'torrents' ? '' : 'none';
+  document.getElementById('view-arr').style.display = view === 'arr' ? '' : 'none';
+  document.getElementById('tab-torrents').classList.toggle('active', view === 'torrents');
+  document.getElementById('tab-arr').classList.toggle('active', view === 'arr');
+  if (view === 'arr') {
+    updateArrPills();
+    loadArrQueueTab();
+    loadArrRecent();
+  }
+}
+
+// ══════════════════════════════════════
+//  PASSWORD CHANGE
+// ══════════════════════════════════════
+function openPassModal() {
+  document.getElementById('pass-old').value = '';
+  document.getElementById('pass-new').value = '';
+  document.getElementById('pass-confirm').value = '';
+  document.getElementById('pass-error').textContent = '';
+  document.getElementById('pass-modal').classList.add('open');
+  setTimeout(() => document.getElementById('pass-old').focus(), 150);
+}
+function closePassModal() {
+  document.getElementById('pass-modal').classList.remove('open');
+}
+async function submitPassChange() {
+  const oldPw  = document.getElementById('pass-old').value;
+  const newPw  = document.getElementById('pass-new').value;
+  const confPw = document.getElementById('pass-confirm').value;
+  const errEl  = document.getElementById('pass-error');
+  errEl.textContent = '';
+  if (!oldPw || !newPw || !confPw) { errEl.textContent = t('pass_empty'); return; }
+  if (newPw !== confPw)            { errEl.textContent = t('pass_mismatch'); return; }
+  try {
+    await POST('/change_password', { old_password: oldPw, new_password: newPw });
+    toast('ok', t('pass_ok'));
+    closePassModal();
+    setTimeout(() => { fetch('/api/logout',{method:'POST'}).finally(()=>location.href='/login'); }, 1500);
+  } catch(e) {
+    errEl.textContent = e.message.includes('401') || e.message.toLowerCase().includes('wrong') || e.message.toLowerCase().includes('invalid') || e.message.toLowerCase().includes('incorrect')
+      ? t('pass_err') : e.message;
+  }
+}
+
+// ══════════════════════════════════════
+//  ARR TAB – LOGIC
+// ══════════════════════════════════════
+let arrSearchMode = 'radarr';  // 'radarr' | 'sonarr'
+
+function setArrSearchTab(mode, btn) {
+  arrSearchMode = mode;
+  document.querySelectorAll('.arr-search-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function updateArrPills() {
+  const rp = document.getElementById('arr-radarr-pill');
+  const sp = document.getElementById('arr-sonarr-pill');
+  if (rp) {
+    const ok = radarrCfg?.url && radarrCfg?.key;
+    rp.className = 'arr-cfg-pill ' + (ok ? 'ok' : 'none');
+    rp.innerHTML = ok ? `🎬 Radarr: <b>${radarrCfg.url.replace(/https?:\/\//, '')}</b>`
+                      : `🎬 Radarr: <span>${t('not_configured')}</span>`;
+  }
+  if (sp) {
+    const ok = sonarrCfg?.url && sonarrCfg?.key;
+    sp.className = 'arr-cfg-pill ' + (ok ? 'ok' : 'none');
+    sp.innerHTML = ok ? `📺 Sonarr: <b>${sonarrCfg.url.replace(/https?:\/\//, '')}</b>`
+                      : `📺 Sonarr: <span>${t('not_configured')}</span>`;
+  }
+}
+
+// Wyszukiwarka ARR (standalone, nie przez lookup torrentu)
+async function arrSearch() {
+  const q = (document.getElementById('arr-search-input').value || '').trim();
+  const res = document.getElementById('arr-search-results');
+  if (!q) return;
+  const cfg = arrSearchMode === 'radarr' ? radarrCfg : sonarrCfg;
+  if (!cfg?.url || !cfg?.key) {
+    openRadarrSettings();
+    return;
+  }
+  res.innerHTML = `<div class="arr-empty"><div class="spinner" style="margin:0 auto 10px"></div>${t('arr_loading')}</div>`;
+  try {
+    const endpoint = arrSearchMode === 'radarr' ? '/api/radarr/lookup' : '/api/sonarr/lookup';
+    const params = new URLSearchParams({ title: q, url: cfg.url, key: cfg.key });
+    const d = await (await fetch(endpoint + '?' + params)).json();
+    renderArrSearchResult(d);
+  } catch(e) {
+    res.innerHTML = `<div class="arr-empty">Błąd: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderArrSearchResult(d) {
+  const res = document.getElementById('arr-search-results');
+  if (!d || d.error || (!d.title && !d.title)) {
+    res.innerHTML = `<div class="arr-empty">${t('arr_no_results')}</div>`;
+    return;
+  }
+  // Może być tablica (z lookup) lub pojedynczy obiekt
+  const items = Array.isArray(d) ? d : [d];
+  if (!items.length) { res.innerHTML = `<div class="arr-empty">${t('arr_no_results')}</div>`; return; }
+  res.innerHTML = items.slice(0, 8).map(item => renderArrResultItem(item)).join('');
+}
+
+function renderArrResultItem(d) {
+  const inLib   = d.in_radarr || d.in_sonarr || (d.id && d.id > 0 && !d.path?.includes?.('lookup'));
+  const hasFile = d.hasFile || d.has_file;
+  const poster  = d.poster || (d.images||[]).find(i=>i.coverType==='poster')?.remoteUrl || '';
+  const posterEl = poster
+    ? `<img class="arr-result-poster" src="${esc(poster)}" alt="poster" loading="lazy" onerror="this.outerHTML=\'<div class=\"arr-result-poster-ph\">🎬</div>\'">`
+    : `<div class="arr-result-poster-ph">${arrSearchMode==='radarr'?'🎬':'📺'}</div>`;
+  const year     = d.year || d.firstAired?.slice?.(0,4) || '';
+  const overview = (d.overview||'').slice(0,140);
+  const tmdbId   = d.tmdbId || d.tmdb_id;
+  const tvdbId   = d.tvdbId || d.tvdb_id;
+  const internalId = d.id || '';
+
+  let statusTag = '';
+  if (inLib && hasFile)   statusTag = `<span class="arr-result-in-lib">${t('arr_in_lib')}</span>`;
+  else if (inLib)         statusTag = `<span class="arr-result-miss">${t('arr_missing')}</span>`;
+  else                    statusTag = `<span class="arr-result-none">${t('arr_not_added')}</span>`;
+
+  const genres = (d.genres||[]).slice(0,2).map(g=>`<span class="radarr-tag">${esc(g)}</span>`).join('');
+
+  let addBtn = '';
+  if (arrSearchMode === 'radarr' && !inLib && tmdbId) {
+    addBtn = `<button class="btn-action warn" style="padding:4px 10px;font-size:11px;white-space:nowrap" onclick="event.stopPropagation();arrAddItem('radarr','${tmdbId}',null)">${t('arr_add_radarr')}</button>`;
+  } else if (arrSearchMode === 'sonarr' && !inLib && tvdbId) {
+    addBtn = `<button class="btn-action blue" style="padding:4px 10px;font-size:11px;white-space:nowrap" onclick="event.stopPropagation();arrAddItem('sonarr',null,'${tvdbId}')">${t('arr_add_sonarr')}</button>`;
+  } else if (inLib && !hasFile) {
+    const xId = arrSearchMode==='radarr' ? `'${tmdbId}','${internalId}'` : `null,'${tvdbId}','${internalId}'`;
+    addBtn = `<button class="btn-ghost" style="padding:4px 10px;font-size:11px;white-space:nowrap" onclick="event.stopPropagation();arrForceSearch('${arrSearchMode}',${xId})">${t('arr_search_radarr')}</button>`;
+  }
+
+  return `<div class="arr-result">
+    ${posterEl}
+    <div class="arr-result-info">
+      <div class="arr-result-title">${esc(d.title||'?')}</div>
+      <div class="arr-result-year">${esc(String(year))}${d.runtime?' · '+d.runtime+' min':''}</div>
+      ${statusTag}
+      <div class="arr-result-overview">${esc(overview)}</div>
+      <div class="arr-result-tags">${genres}</div>
+    </div>
+    <div class="arr-result-actions">${addBtn}</div>
+  </div>`;
+}
+
+async function arrAddItem(type, tmdbId, tvdbId) {
+  const cfg = type === 'radarr' ? radarrCfg : sonarrCfg;
+  toast('info', `Dodawanie do ${type}…`);
+  const body = { url: cfg.url, key: cfg.key };
+  if (tmdbId) body.tmdb_id = parseInt(tmdbId);
+  if (tvdbId) body.tvdb_id = parseInt(tvdbId);
+  try {
+    const r = await fetch('/api/'+type+'/add', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const d = await r.json();
+    if (d.ok) { toast('ok','Dodano!'); addLog('ok', type+': dodano'); arrSearch(); }
+    else       { toast('err', d.error||'Błąd'); }
+  } catch(e) { toast('err', e.message); }
+}
+
+async function arrForceSearch(type, tmdbId, tvdbId, internalId) {
+  const cfg = type === 'radarr' ? radarrCfg : sonarrCfg;
+  toast('info', `Szukam indexatorów w ${type}…`);
+  const body = { url: cfg.url, key: cfg.key };
+  if (tmdbId) body.tmdb_id = parseInt(tmdbId);
+  if (tvdbId) body.tvdb_id = parseInt(tvdbId);
+  if (internalId) { if (type==='radarr') body.movie_id=parseInt(internalId); else body.series_id=parseInt(internalId); }
+  try {
+    const r = await fetch('/api/'+type+'/search', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const d = await r.json();
+    d.ok ? toast('ok','Zlecono wyszukiwanie') : toast('err', d.error||'Błąd');
+  } catch(e) { toast('err', e.message); }
+}
+
+// ARR QUEUE TAB
+async function loadArrQueueTab() {
+  const body = document.getElementById('arr-queue-tab-body');
+  if (!body) return;
+  body.innerHTML = `<div class="arr-empty"><div class="spinner" style="margin:0 auto 10px"></div>${t('arr_loading')}</div>`;
+  const rows = [];
+  try {
+    if (radarrCfg?.url) {
+      const d = await (await fetch('/api/radarr/queue')).json();
+      (d.records||[]).forEach(r => rows.push({...r, _src:'🎬'}));
+    }
+    if (sonarrCfg?.url) {
+      const d = await (await fetch('/api/sonarr/queue')).json();
+      (d.records||[]).forEach(r => rows.push({...r, _src:'📺'}));
+    }
+  } catch(e) {}
+  if (!rows.length) {
+    body.innerHTML = `<div class="arr-empty">${t('arr_queue_empty')}</div>`;
+    return;
+  }
+  body.innerHTML = rows.map(r => {
+    const pct  = r.sizeleft && r.size ? Math.round((1 - r.sizeleft/r.size)*100) : 0;
+    const name = r.title || r.series?.title || '?';
+    const ep   = r.episode ? ` S${String(r.seasonNumber||0).padStart(2,'0')}E${String(r.episodeNumbers?.[0]||r.episode?.episodeNumber||0).padStart(2,'0')}` : '';
+    let statusColor = 'var(--muted)';
+    if (r.status === 'downloading') statusColor = 'var(--accent2)';
+    else if (r.status === 'completed') statusColor = 'var(--accent)';
+    else if (r.status === 'failed') statusColor = 'var(--danger)';
+    return `<div class="arr-item">
+      <div class="arr-item-info">
+        <div class="arr-item-title">${r._src} ${esc(name)}${esc(ep)}</div>
+        <div class="arr-item-sub">${esc(r.protocol||'')} · ${fmtBytes(r.size||0)}</div>
+        <div class="arr-item-prog-bar"><div class="arr-item-prog-fill" style="width:${pct}%"></div></div>
+        <div class="arr-item-pct">${pct}%</div>
+      </div>
+      <span class="arr-item-status" style="border-color:${statusColor};color:${statusColor}">${esc(r.status||'?')}</span>
+    </div>`;
+  }).join('');
+}
+
+// ARR RECENT
+async function loadArrRecent() {
+  // Radarr – ostatnio dodane filmy
+  if (radarrCfg?.url) {
+    const rb = document.getElementById('arr-recent-radarr');
+    if (rb) rb.innerHTML = `<div class="arr-empty"><div class="spinner" style="margin:0 auto 8px"></div></div>`;
+    try {
+      const params = new URLSearchParams({ url: radarrCfg.url, key: radarrCfg.key });
+      // używamy proxy przez backend – GET radarr/lookup nie działa tutaj, więc używamy queue jako proxy
+      // W pełnej implementacji: dodaj endpoint /api/radarr/recent w Go
+      // Na razie: pobieramy queue i z niej wyciągamy tytuły
+      const d = await (await fetch('/api/radarr/queue?' + params)).json();
+      const movies = (d.records||[]).slice(0,5);
+      if (rb) rb.innerHTML = movies.length
+        ? movies.map(m => recentMovieRow(m, '🎬')).join('')
+        : `<div class="arr-empty">${t('arr_queue_empty')}</div>`;
+    } catch(e) {
+      if (rb) rb.innerHTML = `<div class="arr-empty">Błąd: ${esc(e.message)}</div>`;
+    }
+  } else {
+    const rb = document.getElementById('arr-recent-radarr');
+    if (rb) rb.innerHTML = `<div class="arr-empty">${t('not_configured')}</div>`;
+  }
+  // Sonarr
+  if (sonarrCfg?.url) {
+    const sb = document.getElementById('arr-recent-sonarr');
+    if (sb) sb.innerHTML = `<div class="arr-empty"><div class="spinner" style="margin:0 auto 8px"></div></div>`;
+    try {
+      const params = new URLSearchParams({ url: sonarrCfg.url, key: sonarrCfg.key });
+      const d = await (await fetch('/api/sonarr/queue?' + params)).json();
+      const series = (d.records||[]).slice(0,5);
+      if (sb) sb.innerHTML = series.length
+        ? series.map(s => recentMovieRow(s, '📺')).join('')
+        : `<div class="arr-empty">${t('arr_queue_empty')}</div>`;
+    } catch(e) {
+      if (sb) sb.innerHTML = `<div class="arr-empty">Błąd: ${esc(e.message)}</div>`;
+    }
+  } else {
+    const sb = document.getElementById('arr-recent-sonarr');
+    if (sb) sb.innerHTML = `<div class="arr-empty">${t('not_configured')}</div>`;
+  }
+}
+
+function recentMovieRow(item, icon) {
+  const title = item.title || item.series?.title || '?';
+  const ep    = item.episode ? ` E${item.episode.episodeNumber||''}` : '';
+  const pct   = item.sizeleft && item.size ? Math.round((1 - item.sizeleft/item.size)*100) : 0;
+  return `<div class="arr-item">
+    <div class="arr-item-poster-ph">${icon}</div>
+    <div class="arr-item-info">
+      <div class="arr-item-title">${esc(title)}${esc(ep)}</div>
+      <div class="arr-item-sub">${esc(item.protocol||item.status||'')}</div>
+      <div class="arr-item-prog-bar"><div class="arr-item-prog-fill" style="width:${pct}%"></div></div>
+      <div class="arr-item-pct">${pct}% · ${fmtBytes(item.size||0)}</div>
+    </div>
+  </div>`;
+}
+
+// ARR HEALTH
+async function loadArrHealth() {
+  const body = document.getElementById('arr-health-body');
+  if (!body) return;
+  body.innerHTML = `<div class="arr-empty"><div class="spinner" style="margin:0 auto 10px"></div>${t('arr_loading')}</div>`;
+  const issues = [];
+  try {
+    if (radarrCfg?.url) {
+      const b = await (await fetch('/api/radarr/test')).json();
+      if (!b.ok) issues.push({ icon:'🔴', msg:'Radarr niedostępny', src: radarrCfg.url });
+      else issues.push({ icon:'🟢', msg:`Radarr OK — v${b.version||'?'}`, src: radarrCfg.url });
+    }
+    if (sonarrCfg?.url) {
+      const b = await (await fetch('/api/sonarr/test')).json();
+      if (!b.ok) issues.push({ icon:'🔴', msg:'Sonarr niedostępny', src: sonarrCfg.url });
+      else issues.push({ icon:'🟢', msg:`Sonarr OK — v${b.version||'?'}`, src: sonarrCfg.url });
+    }
+  } catch(e) { issues.push({ icon:'🔴', msg:'Błąd połączenia: '+e.message, src:'' }); }
+  if (!issues.length) {
+    body.innerHTML = `<div class="arr-empty">${t('not_configured')}</div>`;
+    return;
+  }
+  body.innerHTML = issues.map(i => `<div class="arr-health-item">
+    <div class="arr-health-icon">${i.icon}</div>
+    <div>
+      <div class="arr-health-msg">${esc(i.msg)}</div>
+      <div class="arr-health-src">${esc(i.src)}</div>
+    </div>
+  </div>`).join('');
+}
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+addLog('info', 'qBitCtrl uruchomiony — port 9911');
+loadServers();
+window.addEventListener('resize', drawSpeedChart);
+// i18n init
+applyLang();
+
+// ══════════════════════════════════════
+//  RADARR INTEGRATION
+// ══════════════════════════════════════
+let radarrCfg = null;
+let sonarrCfg = null;
+
+// Wczytaj konfigurację z serwera przy starcie
+async function loadArrConfig() {
+  try {
+    const r = await fetch('/api/arr/config/full');
+    const d = await r.json();
+    if (d.radarr && d.radarr.url) radarrCfg = d.radarr;
+    if (d.sonarr && d.sonarr.url) sonarrCfg = d.sonarr;
+    updateRadarrBar();
+    updateArrPills();
+    if (radarrCfg?.url || sonarrCfg?.url) refreshArrQueue();
+  } catch(e) {
+    radarrCfg = JSON.parse(localStorage.getItem('radarrCfg') || 'null');
+    sonarrCfg = JSON.parse(localStorage.getItem('sonarrCfg') || 'null');
+    updateRadarrBar();
+    updateArrPills();
+  }
+}
+
+function radarrConfigured() { return radarrCfg && radarrCfg.url && radarrCfg.key; }
+
+function updateRadarrBar() {
+  const lbl = document.getElementById('radarr-cfg-label');
+  const parts = [];
+  if (radarrCfg?.url) parts.push('R:' + radarrCfg.url.replace(/https?:\/\//, ''));
+  if (sonarrCfg?.url) parts.push('S:' + sonarrCfg.url.replace(/https?:\/\//, ''));
+  lbl.textContent = parts.length ? parts.join(' · ') : 'ARR: kliknij aby skonfigurować';
+}
+
+function openRadarrSettings() {
+  document.getElementById('radarr-modal-title').textContent = '⚙ Ustawienia Radarr';
+  document.getElementById('radarr-modal-body').innerHTML = `
+    <div class="radarr-cfg" style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text2);margin-bottom:8px">RADARR (filmy)</div>
+      <div class="form-group" style="margin-bottom:8px"><label>URL</label>
+        <input type="text" id="ri-url" placeholder="http://192.168.1.23:7878" value="${radarrCfg?.url||''}" style="width:100%"></div>
+      <div class="form-group" style="margin-bottom:0"><label>Klucz API</label>
+        <input type="text" id="ri-key" placeholder="klucz API Radarr" value="${radarrCfg?.key||''}" style="width:100%;font-family:var(--mono);font-size:12px"></div>
+    </div>
+    <div class="radarr-cfg">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text2);margin-bottom:8px">SONARR (seriale)</div>
+      <div class="form-group" style="margin-bottom:8px"><label>URL</label>
+        <input type="text" id="si-url" placeholder="http://192.168.1.23:8989" value="${sonarrCfg?.url||''}" style="width:100%"></div>
+      <div class="form-group" style="margin-bottom:0"><label>Klucz API</label>
+        <input type="text" id="si-key" placeholder="klucz API Sonarr" value="${sonarrCfg?.key||''}" style="width:100%;font-family:var(--mono);font-size:12px"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn-action warn" onclick="testBoth()">TESTUJ</button>
+      <button class="btn-ghost" onclick="closeRadarr()">ANULUJ</button>
+      <button class="btn-action green" onclick="saveRadarr()">ZAPISZ</button>
+    </div>`;
+  document.getElementById('radarr-modal').classList.add('open');
+}
+
+function saveRadarr() {
+  const rUrl = document.getElementById('ri-url').value.trim().replace(/\/$/, '');
+  const rKey = document.getElementById('ri-key').value.trim();
+  const sUrl = document.getElementById('si-url').value.trim().replace(/\/$/, '');
+  const sKey = document.getElementById('si-key').value.trim();
+  if (!rUrl && !sUrl) { toast('err', 'Podaj URL Radarr lub Sonarr'); return; }
+  const payload = {};
+  if (rUrl && rKey) { radarrCfg = {url:rUrl, key:rKey}; payload.radarr = radarrCfg; }
+  if (sUrl && sKey) { sonarrCfg = {url:sUrl, key:sKey}; payload.sonarr = sonarrCfg; }
+  // Zapisz na serwerze (persystencja)
+  fetch('/api/arr/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
+    .then(r=>r.json())
+    .then(d => d.ok ? addLog('ok','Arr: konfiguracja zapisana na serwerze') : addLog('warn','Arr: błąd zapisu'))
+    .catch(()=>addLog('warn','Arr: błąd zapisu na serwerze'));
+  updateRadarrBar(); updateArrPills(); closeRadarr();
+  toast('ok', 'Konfiguracja zapisana'); addLog('ok', 'Arr: zapisano konfigurację');
+}
+
+async function testBoth() {
+  const rUrl = document.getElementById('ri-url').value.trim().replace(/\/$/, '');
+  const rKey = document.getElementById('ri-key').value.trim();
+  const sUrl = document.getElementById('si-url').value.trim().replace(/\/$/, '');
+  const sKey = document.getElementById('si-key').value.trim();
+  if (rUrl && rKey) {
+    try {
+      const r = await fetch(`/api/radarr/test?url=${encodeURIComponent(rUrl)}&key=${encodeURIComponent(rKey)}`);
+      const d = await r.json();
+      d.ok ? toast('ok', `Radarr OK v${d.version}`) : toast('err', 'Radarr: '+(d.error||'błąd'));
+    } catch(e) { toast('err', 'Radarr: '+e.message); }
+  }
+  if (sUrl && sKey) {
+    try {
+      const r = await fetch(`/api/sonarr/test?url=${encodeURIComponent(sUrl)}&key=${encodeURIComponent(sKey)}`);
+      const d = await r.json();
+      d.ok ? toast('ok', `Sonarr OK v${d.version}`) : toast('err', 'Sonarr: '+(d.error||'błąd'));
+    } catch(e) { toast('err', 'Sonarr: '+e.message); }
+  }
+}
+
+function closeRadarr() {
+  document.getElementById('radarr-modal').classList.remove('open');
+}
+
+// Parser nazwy torrentu (po stronie JS, do wyświetlenia)
+function parseTorrentName(raw) {
+  let name = raw;
+  // usuń podwójne rozszerzenia
+  name = name.replace(/(\.[a-z]{2,4}){1,2}$/i, '');
+  // usuń tagi []
+  name = name.replace(/\[.*?\]/g, ' ');
+  // zamień . i _ na spacje
+  name = name.replace(/[._]/g, ' ');
+  // znajdź rok
+  const ym = name.match(/(?<!\d)(19\d{2}|20\d{2})(?!\d)/);
+  let year = '';
+  if (ym) { year = ym[1]; name = name.slice(0, ym.index); }
+  // usuń grupę po myślniku
+  name = name.replace(/\s*-\s*\S+\s*$/, '');
+  // usuń znane śmieci
+  const noise = /\b(UHD|HDR|BluRay|BDRip|WEB-?DL|WEBRip|HDRip|DVDRip|DVD|HDTV|2160p|1080p|720p|480p|4K|x264|x265|H\.?264|H\.?265|HEVC|XviD|DivX|AC3|AAC|DTS|MP3|PL|ENG?|MULTI|YIFY|RARBG|REMUX|PROPER|REPACK)\b/gi;
+  name = name.replace(noise, ' ');
+  name = name.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  return { title: name, year };
+}
+
+async function radarrLookup(torrentName) {
+  if (!radarrCfg?.url && !sonarrCfg?.url) {
+    openRadarrSettings();
+    return;
+  }
+  const { title, year } = parseTorrentName(torrentName);
+  document.getElementById('radarr-modal-title').textContent = '🎬 Radarr – szukam…';
+  document.getElementById('radarr-modal-body').innerHTML = `
+    <div class="radarr-spinner"><div class="spinner"></div><div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--text2)">${esc(torrentName.slice(0,60))}</div></div>`;
+  document.getElementById('radarr-modal').classList.add('open');
+
+  try {
+    let d = null, src = null;
+    if (radarrCfg?.url) {
+      const p = new URLSearchParams({title, year, url: radarrCfg.url, key: radarrCfg.key});
+      d = await (await fetch('/api/radarr/lookup?'+p)).json();
+      src = 'radarr';
+    }
+    if ((!d || d.error) && sonarrCfg?.url) {
+      const p = new URLSearchParams({title, year, url: sonarrCfg.url, key: sonarrCfg.key});
+      d = await (await fetch('/api/sonarr/lookup?'+p)).json();
+      src = 'sonarr';
+    }
+    renderArrResult(torrentName, title, year, d, src);
+  } catch(e) {
+    document.getElementById('radarr-modal-body').innerHTML =
+      `<div class="radarr-nf">Błąd:<br>${esc(e.message)}</div>`;
+  }
+}
+
+function renderArrResult(rawName, parsedTitle, year, d, src) {
+  document.getElementById('radarr-modal-title').textContent = '🎬 Radarr – wynik';
+
+  if (d.error || !d.title) {
+    document.getElementById('radarr-modal-body').innerHTML = `
+      <div class="radarr-nf">
+        <div style="font-size:28px;margin-bottom:8px">⬡</div>
+        Nie znaleziono w Radarr:<br>
+        <span style="color:var(--text)">"${esc(parsedTitle)}" ${year ? '('+year+')' : ''}</span><br><br>
+        <span style="color:var(--muted);font-size:11px">Sparsowana nazwa z: ${esc(rawName.slice(0,50))}</span>
+      </div>
+      <div style="display:flex;justify-content:flex-end">
+        <button class="btn-ghost" onclick="closeRadarr()">ZAMKNIJ</button>
+      </div>`;
+    addLog('warn', `Radarr: nie znaleziono "${parsedTitle}"`);
+    return;
+  }
+
+  const poster = d.poster
+    ? `<img class="radarr-poster" src="${esc(d.poster)}" alt="poster" onerror="this.style.display='none'">`
+    : `<div class="radarr-poster-ph">🎬</div>`;
+
+  const inRadarr = d.in_radarr || d.in_sonarr;
+  const hasFile  = d.has_file;
+  const tags = [
+    d.year      ? `<span class="radarr-tag b">${d.year}</span>` : '',
+    d.runtime   ? `<span class="radarr-tag">${d.runtime} min</span>` : '',
+    d.rating    ? `<span class="radarr-tag">${d.rating}★</span>` : '',
+    d.status    ? `<span class="radarr-tag">${esc(d.status)}</span>` : '',
+    inRadarr && hasFile  ? `<span class="radarr-tag g">✔ W BIBLIOTECE</span>` : '',
+    inRadarr && !hasFile ? `<span class="radarr-tag w">⬡ BRAK PLIKU</span>` : '',
+    !inRadarr            ? `<span class="radarr-tag e">NIE W RADARR</span>` : '',
+  ].filter(Boolean).join('');
+
+  const genres = (d.genres||[]).slice(0,3).map(g=>`<span class="radarr-tag">${esc(g)}</span>`).join('');
+
+  document.getElementById('radarr-modal-body').innerHTML = `
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px">
+      Sparsowano: <span style="color:var(--text2)">"${esc(parsedTitle)}"${year?' ('+year+')':''}</span>
+      z nazwy: <span style="color:var(--muted)">${esc(rawName.slice(0,55))}</span>
+    </div>
+    <div class="radarr-result">
+      ${poster}
+      <div class="radarr-info">
+        <div class="radarr-rtitle">${esc(d.title)}</div>
+        <div class="radarr-year">${d.year||'?'} · ${esc(d.studio||d.network||'')}</div>
+        <div class="radarr-overview">${esc(d.overview||'Brak opisu.')}</div>
+        <div class="radarr-tags">${tags}${genres}</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;flex-wrap:wrap">
+      ${src==='radarr'&&!inRadarr&&d.tmdb_id?`<button class="btn-action warn" onclick="addToArr('radarr','${esc(String(d.tmdb_id))}')">+ DODAJ DO RADARR</button>`:''}
+      ${src==='sonarr'&&!inRadarr&&d.tvdb_id?`<button class="btn-action blue" onclick="addToArr('sonarr','${esc(String(d.tvdb_id))}')">+ DODAJ DO SONARR</button>`:''}
+      ${src==='radarr'&&inRadarr&&!hasFile&&d.tmdb_id?`<button class="btn-action warn" title="Wymuś przeszukanie indexatorów" onclick="searchIndexers('radarr','${esc(String(d.tmdb_id))}','${esc(String(d.movie_id||''))}')">⟳ SZUKAJ INDEXATORÓW</button>`:''}
+      ${src==='sonarr'&&inRadarr&&!hasFile&&d.tvdb_id?`<button class="btn-action blue" title="Wymuś przeszukanie indexatorów" onclick="searchIndexers('sonarr','${esc(String(d.tvdb_id))}','${esc(String(d.series_id||''))}')">⟳ SZUKAJ INDEXATORÓW</button>`:''}
+      <button class="btn-ghost" onclick="closeRadarr()">ZAMKNIJ</button>
+    </div>`;
+
+  addLog('ok', `Radarr: znaleziono "${d.title}" (${d.year})`);
+}
+
+async function addToArr(type, id) {
+  if (!id) return;
+  const isR = type==='radarr';
+  toast('info', `Dodawanie do ${isR?'Radarr':'Sonarr'}…`);
+  const cfg = isR ? radarrCfg : sonarrCfg;
+  const body = isR ? {tmdb_id:id, url:cfg.url, key:cfg.key} : {tvdb_id:id, url:cfg.url, key:cfg.key};
+  try {
+    const r = await fetch(`/api/${type}/add`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d = await r.json();
+    if (d.ok) { toast('ok', `Dodano!`); addLog('ok', `${type}: dodano`); closeRadarr(); }
+    else       { toast('err', d.error||'Błąd'); }
+  } catch(e) { toast('err', e.message); }
+}
+
+async function searchIndexers(type, externalId, internalId) {
+  const isR = type === 'radarr';
+  toast('info', `Zlecam przeszukanie indexatorów w ${isR?'Radarr':'Sonarr'}…`);
+  addLog('info', `${isR?'Radarr':'Sonarr'}: uruchamianie wyszukiwania indexatorów`);
+  const cfg = isR ? radarrCfg : sonarrCfg;
+  const body = isR
+    ? {tmdb_id: externalId, movie_id: internalId||undefined, url: cfg?.url, key: cfg?.key}
+    : {tvdb_id: externalId, series_id: internalId||undefined, url: cfg?.url, key: cfg?.key};
+  try {
+    const r = await fetch(`/api/${type}/search`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast('ok', `Zlecono wyszukiwanie – sprawdź kolejkę w ${isR?'Radarr':'Sonarr'}`);
+      addLog('ok', `${isR?'Radarr':'Sonarr'}: komenda wysłana (id=${d.command?.id||'?'})`);
+    } else {
+      toast('err', d.error || 'Błąd');
+      addLog('err', `${isR?'Radarr':'Sonarr'} search: ${d.error}`);
+    }
+  } catch(e) {
+    toast('err', e.message);
+    addLog('err', e.message);
+  }
+}
+
+// Init – wczytaj konfigurację ARR z serwera
+loadArrConfig();
+
+</script>
+<!-- RADARR CONFIG BAR -->
+<div id="radarr-cfg-bar" class="radarr-cfg-bar" onclick="openRadarrSettings()" title="Konfiguruj Radarr" style="position:fixed;bottom:12px;left:12px;z-index:50;width:auto;border-radius:4px;">
+  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+  <span id="radarr-cfg-label">RADARR: nie skonfigurowano</span>
+</div>
+
+<!-- PASSWORD MODAL -->
+<div class="pass-modal-bg" id="pass-modal" onclick="if(event.target===this)closePassModal()">
+  <div class="pass-modal">
+    <div class="pass-modal-title">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span id="pass-modal-title-txt">Zmień hasło</span>
+    </div>
+    <div class="form-group">
+      <label id="pass-old-lbl">Aktualne hasło</label>
+      <input type="password" id="pass-old" placeholder="••••••••••••" style="width:100%">
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label id="pass-new-lbl">Nowe hasło</label>
+      <input type="password" id="pass-new" placeholder="••••••••••••" style="width:100%">
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label id="pass-confirm-lbl">Powtórz nowe hasło</label>
+      <input type="password" id="pass-confirm" placeholder="••••••••••••" style="width:100%"
+             onkeydown="if(event.key==='Enter')submitPassChange()">
+    </div>
+    <div id="pass-error" style="font-family:var(--mono);font-size:12px;color:var(--danger);margin-top:8px;min-height:16px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+      <button class="btn-ghost" onclick="closePassModal()" id="pass-cancel-btn">ANULUJ</button>
+      <button class="btn-action green" onclick="submitPassChange()" id="pass-submit-btn">ZMIEŃ HASŁO</button>
+    </div>
+  </div>
+</div>
+
+<!-- RADARR MODAL -->
+<div class="radarr-backdrop" id="radarr-modal" onclick="if(event.target===this)closeRadarr()">
+  <div class="radarr-modal">
+    <div class="rm-title">
+      <span id="radarr-modal-title">Radarr</span>
+      <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="closeRadarr()">✕</button>
+    </div>
+    <div id="radarr-modal-body"></div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="del-modal-bg" id="del-modal">
+  <div class="del-modal">
+    <div class="del-modal-title">Usuń torrent</div>
+    <div class="del-modal-name" id="del-modal-name"></div>
+    <label class="del-option">
+      <input type="radio" name="del-mode" value="torrent" checked>
+      <div>
+        <span class="del-option-label">Tylko torrent</span>
+        <span class="del-option-desc">Usuwa wpis z qBittorrent. Pobrane pliki pozostają na dysku.</span>
+      </div>
+    </label>
+    <label class="del-option danger-opt">
+      <input type="radio" name="del-mode" value="files">
+      <div>
+        <span class="del-option-label" style="color:var(--danger)">Torrent + pliki</span>
+        <span class="del-option-desc">Usuwa wpis <strong>oraz</strong> wszystkie pobrane pliki z dysku. Operacja nieodwracalna.</span>
+      </div>
+    </label>
+    <div class="del-footer">
+      <button class="btn-ghost" onclick="closeDelModal()">ANULUJ</button>
+      <button class="btn-action danger" onclick="confirmDelete()">USUŃ</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TORRENT MODAL -->
+<div class="modal-backdrop" id="add-torrent-modal" onclick="if(event.target===this)closeAddTorrent()">
+  <div class="modal" style="width:500px">
+    <div class="modal-title">+ DODAJ TORRENT</div>
+    <div class="add-torrent-tabs">
+      <button class="add-tab active" onclick="switchAddTab('magnet',this)">MAGNET / URL</button>
+      <button class="add-tab" onclick="switchAddTab('file',this)">PLIK .TORRENT</button>
+    </div>
+    <div id="add-tab-magnet" class="add-tab-panel active">
+      <div class="form-group">
+        <label>Magnet link lub URL pliku .torrent</label>
+        <input type="text" id="at-magnet" placeholder="magnet:?xt=urn:btih:..." style="font-size:11px">
+      </div>
+    </div>
+    <div id="add-tab-file" class="add-tab-panel">
+      <div class="drop-zone" id="at-drop" onclick="document.getElementById('at-file').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleFileDrop(event)">
+        <div class="drop-icon">📁</div>
+        Kliknij lub upuść plik .torrent
+        <input type="file" id="at-file" accept=".torrent" style="display:none" onchange="handleFileSelect(this)">
+      </div>
+      <div id="at-file-name" style="font-family:var(--mono);font-size:11px;color:var(--accent);margin-top:8px;min-height:16px"></div>
+    </div>
+    <div class="form-row" style="margin-top:12px">
+      <div class="form-group">
+        <label>Kategoria (opcjonalnie)</label>
+        <input type="text" id="at-category" placeholder="np. movies">
+      </div>
+      <div class="form-group">
+        <label>Folder zapisu (opcjonalnie)</label>
+        <input type="text" id="at-savepath" placeholder="np. /data/downloads">
+      </div>
+    </div>
+    <div class="form-group">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="at-paused"> Dodaj jako zatrzymany
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeAddTorrent()">ANULUJ</button>
+      <button class="btn-action green" onclick="submitAddTorrent()">DODAJ</button>
+    </div>
+  </div>
+</div>
+
+<!-- FILE LIST MODAL -->
+<div class="file-modal-bg" id="file-modal">
+  <div class="file-modal">
+    <div class="file-modal-hdr">
+      <div class="file-modal-title" id="file-modal-title">Pliki torrentu</div>
+      <button class="btn-ghost" style="padding:3px 10px;font-size:11px" onclick="closeFileModal()">✕</button>
+    </div>
+    <div class="file-modal-body" id="file-modal-body">
+      <div style="padding:20px;text-align:center;color:var(--muted);font-family:var(--mono);font-size:12px">Ładowanie…</div>
+    </div>
+  </div>
+</div>
+
+<!-- SPEED LIMIT MODAL -->
+<div class="spd-modal-bg" id="spd-modal">
+  <div class="spd-modal">
+    <div style="font-size:15px;font-weight:700;letter-spacing:.5px;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+      ⏱ Limity prędkości <span id="spd-modal-scope" style="font-size:11px;color:var(--text2);font-weight:400"></span>
+    </div>
+    <div class="spd-slider-wrap">
+      <div class="spd-slider-label">
+        <span>▼ POBIERANIE</span>
+        <span class="spd-slider-val" id="spd-dl-val">bez limitu</span>
+      </div>
+      <input type="range" id="spd-dl" min="0" max="102400" step="256" value="0"
+             oninput="updateSpdLabel('dl',this.value)">
+    </div>
+    <div class="spd-slider-wrap">
+      <div class="spd-slider-label">
+        <span>▲ WYSYŁANIE</span>
+        <span class="spd-slider-val" id="spd-ul-val">bez limitu</span>
+      </div>
+      <input type="range" id="spd-ul" min="0" max="51200" step="128" value="0"
+             oninput="updateSpdLabel('ul',this.value)">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn-action warn" onclick="resetSpdLimits()">RESETUJ</button>
+      <button class="btn-ghost" onclick="closeSpdModal()">ANULUJ</button>
+      <button class="btn-action green" onclick="applySpdLimits()">ZASTOSUJ</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT SERVER MODAL -->
+<div class="edit-modal-bg" id="edit-modal">
+  <div class="edit-modal">
+    <div style="font-size:15px;font-weight:700;letter-spacing:.5px;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+      ✏ Edytuj serwer
+    </div>
+    <input type="hidden" id="edit-srv-id">
+    <div class="form-group">
+      <label>Nazwa serwera</label>
+      <input type="text" id="edit-name">
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Host / IP</label><input type="text" id="edit-host"></div>
+      <div class="form-group"><label>Port</label><input type="number" id="edit-port"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Login</label><input type="text" id="edit-user"></div>
+      <div class="form-group"><label>Hasło</label><input type="password" id="edit-pass" placeholder="(bez zmian)"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Protokół</label>
+        <select id="edit-https"><option value="false">HTTP</option><option value="true">HTTPS</option></select>
+      </div>
+      <div class="form-group">
+        <label>Typ restartu</label>
+        <select id="edit-restart-type" onchange="updateRestartUnit('edit')">
+          <option value="none">Brak / ręczny</option>
+          <option value="docker">Docker</option>
+          <option value="systemd">systemd</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" id="edit-unit-wrap" style="display:none">
+      <label>Nazwa unit systemd / kontenera Docker</label>
+      <input type="text" id="edit-restart-unit" placeholder="qbittorrent-nox">
+    </div>
+    <div id="edit-ssh-wrap" style="display:none;background:rgba(0,184,255,.04);border:1px solid rgba(0,184,255,.15);border-radius:4px;padding:12px 14px;margin-bottom:8px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text2);margin-bottom:10px">SSH (wymagane do zdalnego restartu)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>SSH User</label>
+          <input type="text" id="edit-ssh-user" placeholder="root" value="root">
+        </div>
+        <div class="form-group">
+          <label>SSH Port</label>
+          <input type="number" id="edit-ssh-port" placeholder="22" value="22" style="width:80px">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:4px">
+        <label>Ścieżka klucza SSH (puste = agent)</label>
+        <input type="text" id="edit-ssh-key" placeholder="/root/.ssh/id_qbitctrl" style="font-size:12px;font-family:var(--mono)">
+      </div>
+      <button class="btn-ghost" style="font-size:11px;padding:3px 10px;margin-top:4px" onclick="testSsh(document.getElementById('edit-srv-id').value)">🔌 TESTUJ SSH</button>
+    </div>
+    <div style="background:rgba(0,229,160,.04);border:1px solid rgba(0,229,160,.15);border-radius:4px;padding:12px 14px;margin-bottom:4px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--text2);margin-bottom:10px">SCHEDULED RESTART</div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="edit-auto-restart" onchange="updateAutoRestartUI('edit')">
+          Restartuj co X minut
+        </label>
+        <div id="edit-auto-restart-interval-wrap" style="align-items:center;gap:6px">
+          <input type="number" id="edit-auto-restart-interval" value="60" min="1" max="10080" style="width:70px;padding:4px 8px;font-size:12px">
+          <span style="font-size:12px;color:var(--text2)">min (60=1h · 1440=1dzień)</span>
+        </div>
+      </div>
+      <div id="edit-auto-restart-stats" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+      <button class="btn-ghost" onclick="closeEditModal()">ANULUJ</button>
+      <button class="btn-action green" onclick="saveEditServer()">ZAPISZ</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK CATEGORY MODAL -->
+<div class="modal-backdrop" id="bulk-cat-modal" onclick="if(event.target===this)closeBulkCat()">
+  <div class="modal" style="width:340px">
+    <div class="modal-title">🏷 Ustaw kategorię</div>
+    <div class="form-group">
+      <label>Kategoria</label>
+      <input type="text" id="bulk-cat-input" placeholder="np. movies (puste = usuń kategorię)">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeBulkCat()">ANULUJ</button>
+      <button class="btn-action green" onclick="confirmBulkCategory()">ZASTOSUJ</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

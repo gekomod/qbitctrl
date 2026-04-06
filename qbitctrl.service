@@ -1,0 +1,18 @@
+[Unit]
+Description=qBitCtrl – qBittorrent Management Panel (Go)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/qbitctrl
+ExecStart=/usr/local/bin/qbitctrl
+Restart=on-failure
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+Environment=QBITCTRL_PORT=9911
+# Environment=QBITCTRL_DB=/root/qbitctrl/servers.json
+# Environment=QBITCTRL_ARR=/root/qbitctrl/arr.json
+
+[Install]
+WantedBy=multi-user.target
