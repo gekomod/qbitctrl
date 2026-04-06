@@ -44,8 +44,10 @@ wget https://github.com/gekomod/qbitctrl/releases/latest/download/qbitctrl-linux
 ```bash
 chmod +x qbitctrl-linux-amd64
 ./qbitctrl-linux-amd64
+```
+
 Z źródła
-bash
+```bash
 git clone https://github.com/gekomod/qbitctrl.git
 cd qbitctrl
 make build
