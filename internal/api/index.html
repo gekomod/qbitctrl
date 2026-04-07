@@ -99,7 +99,7 @@
   .btn-ghost:hover { border-color:var(--accent); color:var(--accent); background:rgba(0,229,160,.05); }
 
   /* MAIN */
-  main { padding:20px 24px; overflow-y:auto; }
+  main { padding:20px 24px; overflow-y:auto; height:calc(100vh - 52px); }
   .page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border); }
   .page-title { font-size:28px; font-weight:700; letter-spacing:1px; line-height:1.1; }
   .page-title small { display:block; font-family:var(--mono); font-size:11px; color:var(--text2); font-weight:400; letter-spacing:1px; margin-top:3px; }
@@ -460,7 +460,7 @@
 
   /* ── ARR VIEW ─────────────────────────────────────────────── */
   #view-arr { padding:0; }
-  .arr-view { display:flex; flex-direction:column; gap:16px; }
+  .arr-view { display:flex; flex-direction:column; gap:16px; padding-bottom:24px; }
   .arr-section { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
   .arr-section-hdr { display:flex; align-items:center; justify-content:space-between; padding:10px 16px; border-bottom:1px solid var(--border); }
   .arr-section-title { font-size:10px; font-weight:700; letter-spacing:2px; color:var(--text2); text-transform:uppercase; display:flex; align-items:center; gap:8px; }
@@ -488,27 +488,47 @@
   .arr-search-tabs { display:flex; gap:6px; padding:8px 16px 10px; }
   .arr-search-tab { padding:4px 14px; font-family:var(--sans); font-size:11px; font-weight:700; letter-spacing:1px; border:1px solid var(--border2); border-radius:3px; cursor:pointer; color:var(--text2); background:none; transition:.15s; }
   .arr-search-tab.active { color:var(--accent); border-color:var(--accent); }
-  .arr-result { display:flex; gap:12px; padding:12px 16px; border-bottom:1px solid rgba(30,37,48,.6); cursor:pointer; transition:background .12s; }
-  .arr-result:last-child { border-bottom:none; }
-  .arr-result:hover { background:rgba(0,229,160,.04); }
-  .arr-result-poster { width:44px; height:66px; object-fit:cover; border-radius:3px; flex-shrink:0; background:var(--border2); }
-  .arr-result-poster-ph { width:44px; height:66px; border-radius:3px; flex-shrink:0; background:var(--border2); display:flex; align-items:center; justify-content:center; font-size:20px; color:var(--muted); }
-  .arr-result-info { flex:1; min-width:0; }
-  .arr-result-title { font-weight:700; font-size:14px; }
-  .arr-result-year { font-family:var(--mono); font-size:11px; color:var(--text2); margin-top:2px; }
-  .arr-result-overview { font-size:12px; color:var(--text2); margin-top:5px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .arr-result-tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
-  .arr-result-actions { display:flex; flex-direction:column; gap:5px; justify-content:center; flex-shrink:0; }
+  /* ── ARR RESULT CARDS ─────────────────────────────────────── */
+  .arr-results-grid { display:flex; flex-direction:column; }
+  .arr-result-card { display:flex; gap:16px; padding:16px; border-bottom:1px solid rgba(30,37,48,.7); transition:background .12s; }
+  .arr-result-card:last-child { border-bottom:none; }
+  .arr-result-card:hover { background:rgba(0,229,160,.03); }
+  .arr-result-poster { width:80px; height:120px; object-fit:cover; border-radius:5px; flex-shrink:0; background:var(--border2); box-shadow:0 4px 14px rgba(0,0,0,.45); }
+  .arr-result-poster-ph { width:80px; height:120px; border-radius:5px; flex-shrink:0; background:var(--border2); display:flex; align-items:center; justify-content:center; font-size:32px; color:var(--muted); }
+  .arr-result-body { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .arr-result-title { font-weight:700; font-size:15px; line-height:1.2; }
+  .arr-result-meta { font-family:var(--mono); font-size:11px; color:var(--text2); margin-top:5px; display:flex; gap:10px; flex-wrap:wrap; }
+  .arr-result-overview { font-size:12px; color:var(--text2); margin-top:8px; line-height:1.65; flex:1; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .arr-result-footer { display:flex; align-items:center; justify-content:space-between; margin-top:12px; flex-wrap:wrap; gap:8px; }
+  .arr-result-tags { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+  .arr-result-tag { font-family:var(--mono); font-size:10px; padding:2px 8px; border-radius:3px; border:1px solid; letter-spacing:.5px; }
+  .arr-result-tag.lib  { border-color:var(--accent);  color:var(--accent); }
+  .arr-result-tag.miss { border-color:var(--warn);    color:var(--warn); }
+  .arr-result-tag.none { border-color:var(--muted);   color:var(--muted); }
+  .arr-result-tag.gen  { border-color:var(--border2); color:var(--text2); }
+  .arr-add-btn { display:inline-flex; align-items:center; gap:7px; padding:8px 16px; font-family:var(--sans); font-weight:700; font-size:12px; letter-spacing:1px; border:none; border-radius:4px; cursor:pointer; transition:all .15s; white-space:nowrap; flex-shrink:0; }
+  .arr-add-btn.radarr  { background:var(--warn);    color:#000; }
+  .arr-add-btn.radarr:hover  { background:#ffbb44; transform:translateY(-1px); }
+  .arr-add-btn.sonarr  { background:var(--accent2); color:#000; }
+  .arr-add-btn.sonarr:hover  { background:#33ccff; transform:translateY(-1px); }
+  .arr-add-btn.force   { background:transparent; border:1px solid var(--accent); color:var(--accent); }
+  .arr-add-btn.force:hover   { background:rgba(0,229,160,.12); }
+  .arr-add-btn.inlib   { background:transparent; border:1px solid var(--accent); color:var(--accent); cursor:default; opacity:.7; }
   .arr-empty { padding:28px; text-align:center; color:var(--muted); font-family:var(--mono); font-size:12px; }
   .arr-cfg-status { display:flex; gap:10px; flex-wrap:wrap; padding:12px 16px; }
   .arr-cfg-pill { display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; border:1px solid; font-family:var(--mono); font-size:11px; cursor:pointer; transition:opacity .15s; }
-  .arr-cfg-pill.ok { border-color:var(--accent); color:var(--accent); }
-  .arr-cfg-pill.err { border-color:var(--danger); color:var(--danger); }
-  .arr-cfg-pill.none { border-color:var(--muted); color:var(--muted); }
+  .arr-cfg-pill.ok   { border-color:var(--accent); color:var(--accent); }
+  .arr-cfg-pill.err  { border-color:var(--danger); color:var(--danger); }
+  .arr-cfg-pill.none { border-color:var(--muted);  color:var(--muted); }
   .arr-cfg-pill:hover { opacity:.75; }
-  .arr-result-in-lib { color:var(--accent); font-family:var(--mono); font-size:10px; margin-top:4px; }
-  .arr-result-miss    { color:var(--warn);   font-family:var(--mono); font-size:10px; margin-top:4px; }
-  .arr-result-none    { color:var(--muted);  font-family:var(--mono); font-size:10px; margin-top:4px; }
+  .cat-item { display:flex; align-items:center; justify-content:space-between; padding:5px 20px; cursor:pointer; font-size:12px; transition:background .12s; border-left:2px solid transparent; }
+  .cat-item:hover { background:rgba(0,229,160,.05); }
+  .cat-item.active { border-left-color:var(--accent); color:var(--accent); }
+  .cat-item .cat-name { color:inherit; }
+  .cat-item .cat-count { font-family:var(--mono); font-size:10px; color:var(--muted); }
+  .arr-stat { text-align:center; min-width:60px; }
+  .arr-stat-val { font-family:var(--mono); font-size:20px; font-weight:700; color:var(--text); }
+  .arr-stat-lbl { font-family:var(--mono); font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:2px; }
 
   /* ── PASSWORD MODAL ───────────────────────────────────────── */
   .pass-modal-bg { position:fixed; inset:0; z-index:400; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.65); opacity:0; pointer-events:none; transition:opacity .2s; }
@@ -591,7 +611,7 @@
 
 <!-- MAIN -->
 <main>
-<div id="view-torrents">
+<div id="view-torrents" style="padding-bottom:24px">
   <div class="page-header">
     <div class="page-title" id="page-title">
       Wybierz serwer
@@ -761,6 +781,31 @@
       </div>
       <div id="arr-queue-tab-body">
         <div class="arr-empty" id="arr-queue-empty">Ładowanie…</div>
+      </div>
+    </div>
+
+    <!-- STATYSTYKI BIBLIOTEKI -->
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div class="arr-section" style="flex:1;min-width:220px">
+        <div class="arr-section-hdr">
+          <div class="arr-section-title"><span class="dot" style="background:var(--warn)"></span> <span id="arr-lib-radarr-title">BIBLIOTEKA RADARR</span></div>
+        </div>
+        <div id="arr-lib-radarr" style="padding:14px 16px;display:flex;gap:16px;flex-wrap:wrap">
+          <div class="arr-stat"><div class="arr-stat-val" id="arr-r-total">—</div><div class="arr-stat-lbl">filmów</div></div>
+          <div class="arr-stat"><div class="arr-stat-val" id="arr-r-have">—</div><div class="arr-stat-lbl">pobrane</div></div>
+          <div class="arr-stat"><div class="arr-stat-val" id="arr-r-miss">—</div><div class="arr-stat-lbl">brakuje</div></div>
+          <div class="arr-stat"><div class="arr-stat-val" id="arr-r-size">—</div><div class="arr-stat-lbl">na dysku</div></div>
+        </div>
+      </div>
+      <div class="arr-section" style="flex:1;min-width:220px">
+        <div class="arr-section-hdr">
+          <div class="arr-section-title"><span class="dot" style="background:var(--warn)"></span> <span id="arr-lib-sonarr-title">BIBLIOTEKA SONARR</span></div>
+        </div>
+        <div id="arr-lib-sonarr" style="padding:14px 16px;display:flex;gap:16px;flex-wrap:wrap">
+          <div class="arr-stat"><div class="arr-stat-val" id="arr-s-total">—</div><div class="arr-stat-lbl">seriali</div></div>
+          <div class="arr-stat"><div class="arr-stat-val" id="arr-s-ep">—</div><div class="arr-stat-lbl">odcinki</div></div>
+          <div class="arr-stat"><div class="arr-stat-val" id="arr-s-size">—</div><div class="arr-stat-lbl">na dysku</div></div>
+        </div>
       </div>
     </div>
 
@@ -1226,6 +1271,7 @@ function applySortFilter(list) {
   const q = document.getElementById('search').value.toLowerCase().trim();
 
   const filtered = list.filter(t => {
+    if (activeCategory !== null && (t.category||'—') !== activeCategory) return false;
     const state = t.state || '';
     if (activeFilter === 'downloading' && !DOWNLOAD_STATES.has(state)) return false;
     if (activeFilter === 'seeding'     && !SEED_STATES.has(state))     return false;
@@ -2105,6 +2151,7 @@ refreshTorrents = async function() {
     updateMetrics();
     renderTorrents();
     checkCompletedTorrents(torrents);
+    renderCategoryFilter();
   } catch(e) {
     addLog('err', 'Torrenty: ' + e.message);
     torrents = [];
@@ -2254,6 +2301,7 @@ function switchView(view) {
   document.getElementById('tab-arr').classList.toggle('active', view === 'arr');
   if (view === 'arr') {
     updateArrPills();
+    loadArrLibrary();
     loadArrQueueTab();
     loadArrRecent();
   }
@@ -2343,56 +2391,87 @@ async function arrSearch() {
 
 function renderArrSearchResult(d) {
   const res = document.getElementById('arr-search-results');
-  if (!d || d.error || (!d.title && !d.title)) {
+  if (!d || d.error) {
     res.innerHTML = `<div class="arr-empty">${t('arr_no_results')}</div>`;
     return;
   }
-  // Może być tablica (z lookup) lub pojedynczy obiekt
-  const items = Array.isArray(d) ? d : [d];
+  // Backend /lookup zwraca pierwszy wynik jako obiekt, nie tablicę
+  const items = Array.isArray(d) ? d : (d.title ? [d] : []);
   if (!items.length) { res.innerHTML = `<div class="arr-empty">${t('arr_no_results')}</div>`; return; }
-  res.innerHTML = items.slice(0, 8).map(item => renderArrResultItem(item)).join('');
+  res.innerHTML = `<div class="arr-results-grid">${items.slice(0,8).map(renderArrResultItem).join('')}</div>`;
 }
 
 function renderArrResultItem(d) {
-  const inLib   = d.in_radarr || d.in_sonarr || (d.id && d.id > 0 && !d.path?.includes?.('lookup'));
-  const hasFile = d.hasFile || d.has_file;
-  const poster  = d.poster || (d.images||[]).find(i=>i.coverType==='poster')?.remoteUrl || '';
+  const inLib   = !!(d.in_radarr || d.in_sonarr);
+  const hasFile = !!(d.hasFile || d.has_file);
+  const isRadarr = arrSearchMode === 'radarr';
+  const icon    = isRadarr ? '🎬' : '📺';
+
+  // Poster
+  const poster = d.poster || (d.images||[]).find(i=>i.coverType==='poster')?.remoteUrl || '';
   const posterEl = poster
-    ? `<img class="arr-result-poster" src="${esc(poster)}" alt="poster" loading="lazy" onerror="this.outerHTML=\'<div class=\"arr-result-poster-ph\">🎬</div>\'">`
-    : `<div class="arr-result-poster-ph">${arrSearchMode==='radarr'?'🎬':'📺'}</div>`;
-  const year     = d.year || d.firstAired?.slice?.(0,4) || '';
-  const overview = (d.overview||'').slice(0,140);
+    ? `<img class="arr-result-poster" src="${esc(poster)}" alt="poster" loading="lazy"
+         onerror="this.outerHTML='<div class=\"arr-result-poster-ph\">${icon}</div>'">`
+    : `<div class="arr-result-poster-ph">${icon}</div>`;
+
+  // Meta
+  const year    = d.year || d.firstAired?.slice?.(0,4) || '';
+  const runtime = d.runtime ? `${d.runtime} min` : '';
+  const rating  = d.ratings?.value ? `★ ${parseFloat(d.ratings.value).toFixed(1)}` : '';
+  const studio  = d.studio || d.network || '';
+  const overview = (d.overview || '').slice(0, 220);
   const tmdbId   = d.tmdbId || d.tmdb_id;
   const tvdbId   = d.tvdbId || d.tvdb_id;
   const internalId = d.id || '';
 
+  // Status tag
   let statusTag = '';
-  if (inLib && hasFile)   statusTag = `<span class="arr-result-in-lib">${t('arr_in_lib')}</span>`;
-  else if (inLib)         statusTag = `<span class="arr-result-miss">${t('arr_missing')}</span>`;
-  else                    statusTag = `<span class="arr-result-none">${t('arr_not_added')}</span>`;
+  if (inLib && hasFile)
+    statusTag = `<span class="arr-result-tag lib">✔ ${t('arr_in_lib')}</span>`;
+  else if (inLib)
+    statusTag = `<span class="arr-result-tag miss">⚠ ${t('arr_missing')}</span>`;
+  else
+    statusTag = `<span class="arr-result-tag none">✕ ${t('arr_not_added')}</span>`;
 
-  const genres = (d.genres||[]).slice(0,2).map(g=>`<span class="radarr-tag">${esc(g)}</span>`).join('');
+  const genreTags = (d.genres||[]).slice(0,3)
+    .map(g=>`<span class="arr-result-tag gen">${esc(g)}</span>`).join('');
 
+  // Action button – wyraźny, zawsze na dole
   let addBtn = '';
-  if (arrSearchMode === 'radarr' && !inLib && tmdbId) {
-    addBtn = `<button class="btn-action warn" style="padding:4px 10px;font-size:11px;white-space:nowrap" onclick="event.stopPropagation();arrAddItem('radarr','${tmdbId}',null)">${t('arr_add_radarr')}</button>`;
-  } else if (arrSearchMode === 'sonarr' && !inLib && tvdbId) {
-    addBtn = `<button class="btn-action blue" style="padding:4px 10px;font-size:11px;white-space:nowrap" onclick="event.stopPropagation();arrAddItem('sonarr',null,'${tvdbId}')">${t('arr_add_sonarr')}</button>`;
+  if (isRadarr && !inLib && tmdbId) {
+    addBtn = `<button class="arr-add-btn radarr" onclick="event.stopPropagation();arrAddItem('radarr','${tmdbId}',null)">
+      <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      DODAJ DO RADARR</button>`;
+  } else if (!isRadarr && !inLib && tvdbId) {
+    addBtn = `<button class="arr-add-btn sonarr" onclick="event.stopPropagation();arrAddItem('sonarr',null,'${tvdbId}')">
+      <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      DODAJ DO SONARR</button>`;
   } else if (inLib && !hasFile) {
-    const xId = arrSearchMode==='radarr' ? `'${tmdbId}','${internalId}'` : `null,'${tvdbId}','${internalId}'`;
-    addBtn = `<button class="btn-ghost" style="padding:4px 10px;font-size:11px;white-space:nowrap" onclick="event.stopPropagation();arrForceSearch('${arrSearchMode}',${xId})">${t('arr_search_radarr')}</button>`;
+    const args = isRadarr
+      ? `'radarr','${tmdbId}',null,'${internalId}'`
+      : `'sonarr',null,'${tvdbId}','${internalId}'`;
+    addBtn = `<button class="arr-add-btn force" onclick="event.stopPropagation();arrForceSearch(${args})">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      SZUKAJ INDEXATORÓW</button>`;
+  } else if (inLib && hasFile) {
+    addBtn = `<span class="arr-add-btn inlib">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      W BIBLIOTECE</span>`;
   }
 
-  return `<div class="arr-result">
+  const metaParts = [year,runtime,rating,studio].filter(Boolean).map(s=>`<span>${esc(s)}</span>`).join('');
+
+  return `<div class="arr-result-card">
     ${posterEl}
-    <div class="arr-result-info">
+    <div class="arr-result-body">
       <div class="arr-result-title">${esc(d.title||'?')}</div>
-      <div class="arr-result-year">${esc(String(year))}${d.runtime?' · '+d.runtime+' min':''}</div>
-      ${statusTag}
-      <div class="arr-result-overview">${esc(overview)}</div>
-      <div class="arr-result-tags">${genres}</div>
+      <div class="arr-result-meta">${metaParts}</div>
+      <div class="arr-result-overview">${overview ? esc(overview) : '<span style="color:var(--muted)">Brak opisu</span>'}</div>
+      <div class="arr-result-footer">
+        <div class="arr-result-tags">${statusTag}${genreTags}</div>
+        ${addBtn}
+      </div>
     </div>
-    <div class="arr-result-actions">${addBtn}</div>
   </div>`;
 }
 
@@ -2464,87 +2543,153 @@ async function loadArrQueueTab() {
   }).join('');
 }
 
-// ARR RECENT
+// ARR LIBRARY STATS
+async function loadArrLibrary() {
+  try {
+    if (radarrCfg?.url) {
+      const d = await (await fetch('/api/radarr/library')).json();
+      if (!d.error) {
+        safeSet('arr-r-total', d.total ?? '—');
+        safeSet('arr-r-have',  d.withFile ?? '—');
+        safeSet('arr-r-miss',  d.missing ?? '—');
+        safeSet('arr-r-size',  fmtBytes(d.totalSize || 0));
+      }
+    }
+    if (sonarrCfg?.url) {
+      const d = await (await fetch('/api/sonarr/library')).json();
+      if (!d.error) {
+        safeSet('arr-s-total', d.total ?? '—');
+        safeSet('arr-s-ep',    `${d.haveEpisodes ?? '?'}/${d.totalEpisodes ?? '?'}`);
+        safeSet('arr-s-size',  fmtBytes(d.totalSize || 0));
+      }
+    }
+  } catch(e) {}
+}
+
+// ARR RECENT – używa prawdziwych endpointów /api/radarr/recent
 async function loadArrRecent() {
-  // Radarr – ostatnio dodane filmy
+  const rb = document.getElementById('arr-recent-radarr');
+  const sb = document.getElementById('arr-recent-sonarr');
+
   if (radarrCfg?.url) {
-    const rb = document.getElementById('arr-recent-radarr');
     if (rb) rb.innerHTML = `<div class="arr-empty"><div class="spinner" style="margin:0 auto 8px"></div></div>`;
     try {
-      const params = new URLSearchParams({ url: radarrCfg.url, key: radarrCfg.key });
-      // używamy proxy przez backend – GET radarr/lookup nie działa tutaj, więc używamy queue jako proxy
-      // W pełnej implementacji: dodaj endpoint /api/radarr/recent w Go
-      // Na razie: pobieramy queue i z niej wyciągamy tytuły
-      const d = await (await fetch('/api/radarr/queue?' + params)).json();
-      const movies = (d.records||[]).slice(0,5);
+      const movies = await (await fetch('/api/radarr/recent')).json();
       if (rb) rb.innerHTML = movies.length
-        ? movies.map(m => recentMovieRow(m, '🎬')).join('')
+        ? movies.map(m => recentMediaRow(m, '🎬', false)).join('')
         : `<div class="arr-empty">${t('arr_queue_empty')}</div>`;
     } catch(e) {
       if (rb) rb.innerHTML = `<div class="arr-empty">Błąd: ${esc(e.message)}</div>`;
     }
   } else {
-    const rb = document.getElementById('arr-recent-radarr');
     if (rb) rb.innerHTML = `<div class="arr-empty">${t('not_configured')}</div>`;
   }
-  // Sonarr
+
   if (sonarrCfg?.url) {
-    const sb = document.getElementById('arr-recent-sonarr');
     if (sb) sb.innerHTML = `<div class="arr-empty"><div class="spinner" style="margin:0 auto 8px"></div></div>`;
     try {
-      const params = new URLSearchParams({ url: sonarrCfg.url, key: sonarrCfg.key });
-      const d = await (await fetch('/api/sonarr/queue?' + params)).json();
-      const series = (d.records||[]).slice(0,5);
+      const series = await (await fetch('/api/sonarr/recent')).json();
       if (sb) sb.innerHTML = series.length
-        ? series.map(s => recentMovieRow(s, '📺')).join('')
+        ? series.map(s => recentMediaRow(s, '📺', true)).join('')
         : `<div class="arr-empty">${t('arr_queue_empty')}</div>`;
     } catch(e) {
       if (sb) sb.innerHTML = `<div class="arr-empty">Błąd: ${esc(e.message)}</div>`;
     }
   } else {
-    const sb = document.getElementById('arr-recent-sonarr');
     if (sb) sb.innerHTML = `<div class="arr-empty">${t('not_configured')}</div>`;
   }
 }
 
-function recentMovieRow(item, icon) {
-  const title = item.title || item.series?.title || '?';
-  const ep    = item.episode ? ` E${item.episode.episodeNumber||''}` : '';
-  const pct   = item.sizeleft && item.size ? Math.round((1 - item.sizeleft/item.size)*100) : 0;
-  return `<div class="arr-item">
-    <div class="arr-item-poster-ph">${icon}</div>
-    <div class="arr-item-info">
-      <div class="arr-item-title">${esc(title)}${esc(ep)}</div>
-      <div class="arr-item-sub">${esc(item.protocol||item.status||'')}</div>
-      <div class="arr-item-prog-bar"><div class="arr-item-prog-fill" style="width:${pct}%"></div></div>
-      <div class="arr-item-pct">${pct}% · ${fmtBytes(item.size||0)}</div>
-    </div>
-  </div>`;
+function recentMediaRow(item, icon, isSeries) {
+  const poster = item.poster || '';
+  const posterEl = poster
+    ? `<img class="arr-item-poster" src="${esc(poster)}" alt="poster" loading="lazy"
+         onerror="this.outerHTML='<div class=\"arr-item-poster-ph\">${icon}</div>'">`
+    : `<div class="arr-item-poster-ph">${icon}</div>`;
+
+  let sub = '';
+  if (isSeries) {
+    const pct = Math.round(item.percentOfEpisodes || 0);
+    sub = `${item.episodeHave||0}/${item.episodeCount||'?'} odcinków · ${fmtBytes(item.sizeOnDisk||0)}`;
+    const bar = `<div class="arr-item-prog-bar"><div class="arr-item-prog-fill" style="width:${pct}%"></div></div>
+                 <div class="arr-item-pct">${pct}%</div>`;
+    return `<div class="arr-item">
+      ${posterEl}
+      <div class="arr-item-info">
+        <div class="arr-item-title">${esc(item.title||'?')}${item.year?' ('+item.year+')':''}</div>
+        <div class="arr-item-sub">${esc(sub)}</div>
+        ${bar}
+      </div>
+      <span class="arr-item-status" style="border-color:${item.monitored?'var(--accent)':'var(--muted)'};color:${item.monitored?'var(--accent)':'var(--muted)'}">
+        ${item.monitored ? 'monitored' : 'unmonitored'}
+      </span>
+    </div>`;
+  } else {
+    const hasFile = item.hasFile;
+    const statusColor = hasFile ? 'var(--accent)' : 'var(--warn)';
+    const statusLbl   = hasFile ? '✔ pobrano' : '⬡ brak';
+    return `<div class="arr-item">
+      ${posterEl}
+      <div class="arr-item-info">
+        <div class="arr-item-title">${esc(item.title||'?')}${item.year?' ('+item.year+')':''}</div>
+        <div class="arr-item-sub">${esc(item.status||'')}${item.size?' · '+fmtBytes(item.size):''}</div>
+      </div>
+      <span class="arr-item-status" style="border-color:${statusColor};color:${statusColor}">${statusLbl}</span>
+    </div>`;
+  }
 }
 
-// ARR HEALTH
+// ARR HEALTH – używa prawdziwych /api/radarr/health i /api/sonarr/health
 async function loadArrHealth() {
   const body = document.getElementById('arr-health-body');
   if (!body) return;
   body.innerHTML = `<div class="arr-empty"><div class="spinner" style="margin:0 auto 10px"></div>${t('arr_loading')}</div>`;
-  const issues = [];
-  try {
-    if (radarrCfg?.url) {
+  const sections = [];
+
+  // Ping test
+  if (radarrCfg?.url) {
+    try {
       const b = await (await fetch('/api/radarr/test')).json();
-      if (!b.ok) issues.push({ icon:'🔴', msg:'Radarr niedostępny', src: radarrCfg.url });
-      else issues.push({ icon:'🟢', msg:`Radarr OK — v${b.version||'?'}`, src: radarrCfg.url });
-    }
-    if (sonarrCfg?.url) {
+      sections.push({ icon: b.ok ? '🟢' : '🔴', msg: b.ok ? `Radarr OK — v${b.version||'?'}` : `Radarr: ${b.error||'niedostępny'}`, src: radarrCfg.url, type: b.ok ? 'ok' : 'err' });
+      if (b.ok) {
+        const h = await (await fetch('/api/radarr/health')).json();
+        if (Array.isArray(h)) {
+          h.forEach(i => sections.push({
+            icon: i.type === 'warning' ? '⚠️' : i.type === 'error' ? '🔴' : '💡',
+            msg: i.message || JSON.stringify(i),
+            src: 'Radarr · ' + (i.source||''),
+            type: i.type
+          }));
+          if (!h.length) sections.push({ icon: '✅', msg: 'Radarr: brak problemów', src: radarrCfg.url, type: 'ok' });
+        }
+      }
+    } catch(e) { sections.push({ icon: '🔴', msg: 'Radarr: ' + e.message, src: radarrCfg.url, type: 'err' }); }
+  }
+
+  if (sonarrCfg?.url) {
+    try {
       const b = await (await fetch('/api/sonarr/test')).json();
-      if (!b.ok) issues.push({ icon:'🔴', msg:'Sonarr niedostępny', src: sonarrCfg.url });
-      else issues.push({ icon:'🟢', msg:`Sonarr OK — v${b.version||'?'}`, src: sonarrCfg.url });
-    }
-  } catch(e) { issues.push({ icon:'🔴', msg:'Błąd połączenia: '+e.message, src:'' }); }
-  if (!issues.length) {
+      sections.push({ icon: b.ok ? '🟢' : '🔴', msg: b.ok ? `Sonarr OK — v${b.version||'?'}` : `Sonarr: ${b.error||'niedostępny'}`, src: sonarrCfg.url, type: b.ok ? 'ok' : 'err' });
+      if (b.ok) {
+        const h = await (await fetch('/api/sonarr/health')).json();
+        if (Array.isArray(h)) {
+          h.forEach(i => sections.push({
+            icon: i.type === 'warning' ? '⚠️' : i.type === 'error' ? '🔴' : '💡',
+            msg: i.message || JSON.stringify(i),
+            src: 'Sonarr · ' + (i.source||''),
+            type: i.type
+          }));
+          if (!h.length) sections.push({ icon: '✅', msg: 'Sonarr: brak problemów', src: sonarrCfg.url, type: 'ok' });
+        }
+      }
+    } catch(e) { sections.push({ icon: '🔴', msg: 'Sonarr: ' + e.message, src: sonarrCfg.url, type: 'err' }); }
+  }
+
+  if (!sections.length) {
     body.innerHTML = `<div class="arr-empty">${t('not_configured')}</div>`;
     return;
   }
-  body.innerHTML = issues.map(i => `<div class="arr-health-item">
+  body.innerHTML = sections.map(i => `<div class="arr-health-item">
     <div class="arr-health-icon">${i.icon}</div>
     <div>
       <div class="arr-health-msg">${esc(i.msg)}</div>
@@ -2553,22 +2698,52 @@ async function loadArrHealth() {
   </div>`).join('');
 }
 
-// ══════════════════════════════════════
-//  INIT
-// ══════════════════════════════════════
-addLog('info', 'qBitCtrl uruchomiony — port 9911');
-loadServers();
-window.addEventListener('resize', drawSpeedChart);
-// i18n init
-applyLang();
 
 // ══════════════════════════════════════
-//  RADARR INTEGRATION
+//  CATEGORY FILTER
+// ══════════════════════════════════════
+let activeCategory = null;
+
+function renderCategoryFilter() {
+  const cats = {};
+  torrents.forEach(t => {
+    const c = t.category || '—';
+    cats[c] = (cats[c] || 0) + 1;
+  });
+  const section = document.getElementById('category-filter-section');
+  const list    = document.getElementById('category-list');
+  if (!section) return;
+  const keys = Object.keys(cats).sort();
+  if (!keys.length || keys.every(k => k === '—')) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  const allActive = activeCategory === null;
+  list.innerHTML =
+    `<div class="cat-item ${allActive?'active':''}" onclick="setCategoryFilter(null)">
+      <span class="cat-name">Wszystkie</span>
+      <span class="cat-count">${torrents.length}</span>
+    </div>` +
+    keys.map(c => `<div class="cat-item ${activeCategory===c?'active':''}" onclick="setCategoryFilter('${esc(c)}')">
+      <span class="cat-name">${esc(c==='—'?'bez kategorii':c)}</span>
+      <span class="cat-count">${cats[c]}</span>
+    </div>`).join('');
+}
+
+function setCategoryFilter(cat) {
+  activeCategory = cat;
+  renderCategoryFilter();
+  renderTorrents();
+}
+
+
+// ══════════════════════════════════════
+//  RADARR INTEGRATION – state & config
 // ══════════════════════════════════════
 let radarrCfg = null;
 let sonarrCfg = null;
 
-// Wczytaj konfigurację z serwera przy starcie
 async function loadArrConfig() {
   try {
     const r = await fetch('/api/arr/config/full');
@@ -2577,7 +2752,12 @@ async function loadArrConfig() {
     if (d.sonarr && d.sonarr.url) sonarrCfg = d.sonarr;
     updateRadarrBar();
     updateArrPills();
-    if (radarrCfg?.url || sonarrCfg?.url) refreshArrQueue();
+    // jeśli ARR tab jest aktywny – odśwież go
+    if (currentView === 'arr') {
+      loadArrLibrary();
+      loadArrQueueTab();
+      loadArrRecent();
+    }
   } catch(e) {
     radarrCfg = JSON.parse(localStorage.getItem('radarrCfg') || 'null');
     sonarrCfg = JSON.parse(localStorage.getItem('sonarrCfg') || 'null');
@@ -2586,10 +2766,11 @@ async function loadArrConfig() {
   }
 }
 
-function radarrConfigured() { return radarrCfg && radarrCfg.url && radarrCfg.key; }
+function radarrConfigured() { return !!(radarrCfg && radarrCfg.url && radarrCfg.key); }
 
 function updateRadarrBar() {
   const lbl = document.getElementById('radarr-cfg-label');
+  if (!lbl) return;
   const parts = [];
   if (radarrCfg?.url) parts.push('R:' + radarrCfg.url.replace(/https?:\/\//, ''));
   if (sonarrCfg?.url) parts.push('S:' + sonarrCfg.url.replace(/https?:\/\//, ''));
@@ -2630,13 +2811,13 @@ function saveRadarr() {
   const payload = {};
   if (rUrl && rKey) { radarrCfg = {url:rUrl, key:rKey}; payload.radarr = radarrCfg; }
   if (sUrl && sKey) { sonarrCfg = {url:sUrl, key:sKey}; payload.sonarr = sonarrCfg; }
-  // Zapisz na serwerze (persystencja)
   fetch('/api/arr/config', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)})
     .then(r=>r.json())
-    .then(d => d.ok ? addLog('ok','Arr: konfiguracja zapisana na serwerze') : addLog('warn','Arr: błąd zapisu'))
-    .catch(()=>addLog('warn','Arr: błąd zapisu na serwerze'));
+    .then(d => d.ok ? addLog('ok','Arr: konfiguracja zapisana') : addLog('warn','Arr: błąd zapisu'))
+    .catch(()=>addLog('warn','Arr: błąd zapisu'));
   updateRadarrBar(); updateArrPills(); closeRadarr();
-  toast('ok', 'Konfiguracja zapisana'); addLog('ok', 'Arr: zapisano konfigurację');
+  if (currentView === 'arr') { loadArrLibrary(); loadArrQueueTab(); loadArrRecent(); }
+  toast('ok', 'Konfiguracja zapisana');
 }
 
 async function testBoth() {
@@ -2664,22 +2845,15 @@ function closeRadarr() {
   document.getElementById('radarr-modal').classList.remove('open');
 }
 
-// Parser nazwy torrentu (po stronie JS, do wyświetlenia)
 function parseTorrentName(raw) {
   let name = raw;
-  // usuń podwójne rozszerzenia
   name = name.replace(/(\.[a-z]{2,4}){1,2}$/i, '');
-  // usuń tagi []
   name = name.replace(/\[.*?\]/g, ' ');
-  // zamień . i _ na spacje
   name = name.replace(/[._]/g, ' ');
-  // znajdź rok
   const ym = name.match(/(?<!\d)(19\d{2}|20\d{2})(?!\d)/);
   let year = '';
   if (ym) { year = ym[1]; name = name.slice(0, ym.index); }
-  // usuń grupę po myślniku
   name = name.replace(/\s*-\s*\S+\s*$/, '');
-  // usuń znane śmieci
   const noise = /\b(UHD|HDR|BluRay|BDRip|WEB-?DL|WEBRip|HDRip|DVDRip|DVD|HDTV|2160p|1080p|720p|480p|4K|x264|x265|H\.?264|H\.?265|HEVC|XviD|DivX|AC3|AAC|DTS|MP3|PL|ENG?|MULTI|YIFY|RARBG|REMUX|PROPER|REPACK)\b/gi;
   name = name.replace(noise, ' ');
   name = name.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -2687,78 +2861,57 @@ function parseTorrentName(raw) {
 }
 
 async function radarrLookup(torrentName) {
-  if (!radarrCfg?.url && !sonarrCfg?.url) {
-    openRadarrSettings();
-    return;
-  }
+  if (!radarrCfg?.url && !sonarrCfg?.url) { openRadarrSettings(); return; }
   const { title, year } = parseTorrentName(torrentName);
   document.getElementById('radarr-modal-title').textContent = '🎬 Radarr – szukam…';
-  document.getElementById('radarr-modal-body').innerHTML = `
-    <div class="radarr-spinner"><div class="spinner"></div><div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--text2)">${esc(torrentName.slice(0,60))}</div></div>`;
+  document.getElementById('radarr-modal-body').innerHTML =
+    `<div class="radarr-spinner"><div class="spinner"></div><div style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--text2)">${esc(torrentName.slice(0,60))}</div></div>`;
   document.getElementById('radarr-modal').classList.add('open');
-
   try {
     let d = null, src = null;
     if (radarrCfg?.url) {
       const p = new URLSearchParams({title, year, url: radarrCfg.url, key: radarrCfg.key});
-      d = await (await fetch('/api/radarr/lookup?'+p)).json();
+      const res = await (await fetch('/api/radarr/lookup?'+p)).json();
+      d = Array.isArray(res) ? res[0] : res;
       src = 'radarr';
     }
     if ((!d || d.error) && sonarrCfg?.url) {
       const p = new URLSearchParams({title, year, url: sonarrCfg.url, key: sonarrCfg.key});
-      d = await (await fetch('/api/sonarr/lookup?'+p)).json();
+      const res = await (await fetch('/api/sonarr/lookup?'+p)).json();
+      d = Array.isArray(res) ? res[0] : res;
       src = 'sonarr';
     }
     renderArrResult(torrentName, title, year, d, src);
   } catch(e) {
-    document.getElementById('radarr-modal-body').innerHTML =
-      `<div class="radarr-nf">Błąd:<br>${esc(e.message)}</div>`;
+    document.getElementById('radarr-modal-body').innerHTML = `<div class="radarr-nf">Błąd:<br>${esc(e.message)}</div>`;
   }
 }
 
 function renderArrResult(rawName, parsedTitle, year, d, src) {
   document.getElementById('radarr-modal-title').textContent = '🎬 Radarr – wynik';
-
-  if (d.error || !d.title) {
+  if (!d || d.error || !d.title) {
     document.getElementById('radarr-modal-body').innerHTML = `
-      <div class="radarr-nf">
-        <div style="font-size:28px;margin-bottom:8px">⬡</div>
-        Nie znaleziono w Radarr:<br>
-        <span style="color:var(--text)">"${esc(parsedTitle)}" ${year ? '('+year+')' : ''}</span><br><br>
-        <span style="color:var(--muted);font-size:11px">Sparsowana nazwa z: ${esc(rawName.slice(0,50))}</span>
-      </div>
-      <div style="display:flex;justify-content:flex-end">
-        <button class="btn-ghost" onclick="closeRadarr()">ZAMKNIJ</button>
-      </div>`;
-    addLog('warn', `Radarr: nie znaleziono "${parsedTitle}"`);
+      <div class="radarr-nf"><div style="font-size:28px;margin-bottom:8px">⬡</div>
+        Nie znaleziono:<br><span style="color:var(--text)">"${esc(parsedTitle)}" ${year?'('+year+')':''}</span>
+      </div><div style="display:flex;justify-content:flex-end">
+        <button class="btn-ghost" onclick="closeRadarr()">ZAMKNIJ</button></div>`;
     return;
   }
-
-  const poster = d.poster
-    ? `<img class="radarr-poster" src="${esc(d.poster)}" alt="poster" onerror="this.style.display='none'">`
-    : `<div class="radarr-poster-ph">🎬</div>`;
-
-  const inRadarr = d.in_radarr || d.in_sonarr;
-  const hasFile  = d.has_file;
+  const poster   = d.poster ? `<img class="radarr-poster" src="${esc(d.poster)}" alt="poster" onerror="this.style.display='none'">` : `<div class="radarr-poster-ph">🎬</div>`;
+  const inLib    = d.in_radarr || d.in_sonarr;
+  const hasFile  = d.has_file || d.hasFile;
   const tags = [
-    d.year      ? `<span class="radarr-tag b">${d.year}</span>` : '',
-    d.runtime   ? `<span class="radarr-tag">${d.runtime} min</span>` : '',
-    d.rating    ? `<span class="radarr-tag">${d.rating}★</span>` : '',
-    d.status    ? `<span class="radarr-tag">${esc(d.status)}</span>` : '',
-    inRadarr && hasFile  ? `<span class="radarr-tag g">✔ W BIBLIOTECE</span>` : '',
-    inRadarr && !hasFile ? `<span class="radarr-tag w">⬡ BRAK PLIKU</span>` : '',
-    !inRadarr            ? `<span class="radarr-tag e">NIE W RADARR</span>` : '',
+    d.year     ? `<span class="radarr-tag b">${d.year}</span>` : '',
+    d.runtime  ? `<span class="radarr-tag">${d.runtime} min</span>` : '',
+    inLib && hasFile  ? `<span class="radarr-tag g">✔ W BIBLIOTECE</span>` : '',
+    inLib && !hasFile ? `<span class="radarr-tag w">⬡ BRAK PLIKU</span>` : '',
+    !inLib            ? `<span class="radarr-tag e">NIE DODANO</span>` : '',
   ].filter(Boolean).join('');
-
   const genres = (d.genres||[]).slice(0,3).map(g=>`<span class="radarr-tag">${esc(g)}</span>`).join('');
-
+  const tmdbId = d.tmdbId || d.tmdb_id;
+  const tvdbId = d.tvdbId || d.tvdb_id;
   document.getElementById('radarr-modal-body').innerHTML = `
-    <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:10px">
-      Sparsowano: <span style="color:var(--text2)">"${esc(parsedTitle)}"${year?' ('+year+')':''}</span>
-      z nazwy: <span style="color:var(--muted)">${esc(rawName.slice(0,55))}</span>
-    </div>
-    <div class="radarr-result">
-      ${poster}
+    <div class="radarr-result">${poster}
       <div class="radarr-info">
         <div class="radarr-rtitle">${esc(d.title)}</div>
         <div class="radarr-year">${d.year||'?'} · ${esc(d.studio||d.network||'')}</div>
@@ -2767,54 +2920,40 @@ function renderArrResult(rawName, parsedTitle, year, d, src) {
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;flex-wrap:wrap">
-      ${src==='radarr'&&!inRadarr&&d.tmdb_id?`<button class="btn-action warn" onclick="addToArr('radarr','${esc(String(d.tmdb_id))}')">+ DODAJ DO RADARR</button>`:''}
-      ${src==='sonarr'&&!inRadarr&&d.tvdb_id?`<button class="btn-action blue" onclick="addToArr('sonarr','${esc(String(d.tvdb_id))}')">+ DODAJ DO SONARR</button>`:''}
-      ${src==='radarr'&&inRadarr&&!hasFile&&d.tmdb_id?`<button class="btn-action warn" title="Wymuś przeszukanie indexatorów" onclick="searchIndexers('radarr','${esc(String(d.tmdb_id))}','${esc(String(d.movie_id||''))}')">⟳ SZUKAJ INDEXATORÓW</button>`:''}
-      ${src==='sonarr'&&inRadarr&&!hasFile&&d.tvdb_id?`<button class="btn-action blue" title="Wymuś przeszukanie indexatorów" onclick="searchIndexers('sonarr','${esc(String(d.tvdb_id))}','${esc(String(d.series_id||''))}')">⟳ SZUKAJ INDEXATORÓW</button>`:''}
+      ${src==='radarr'&&!inLib&&tmdbId?`<button class="btn-action warn" onclick="addToArr('radarr','${tmdbId}')">+ DODAJ DO RADARR</button>`:''}
+      ${src==='sonarr'&&!inLib&&tvdbId?`<button class="btn-action blue" onclick="addToArr('sonarr','${tvdbId}')">+ DODAJ DO SONARR</button>`:''}
+      ${src==='radarr'&&inLib&&!hasFile&&tmdbId?`<button class="btn-action warn" onclick="searchIndexers('radarr','${tmdbId}','${d.id||''}')">⟳ SZUKAJ INDEXATORÓW</button>`:''}
+      ${src==='sonarr'&&inLib&&!hasFile&&tvdbId?`<button class="btn-action blue" onclick="searchIndexers('sonarr','${tvdbId}','${d.id||''}')">⟳ SZUKAJ INDEXATORÓW</button>`:''}
       <button class="btn-ghost" onclick="closeRadarr()">ZAMKNIJ</button>
     </div>`;
-
-  addLog('ok', `Radarr: znaleziono "${d.title}" (${d.year})`);
 }
 
 async function addToArr(type, id) {
   if (!id) return;
   const isR = type==='radarr';
   toast('info', `Dodawanie do ${isR?'Radarr':'Sonarr'}…`);
-  const cfg = isR ? radarrCfg : sonarrCfg;
-  const body = isR ? {tmdb_id:id, url:cfg.url, key:cfg.key} : {tvdb_id:id, url:cfg.url, key:cfg.key};
+  const cfg  = isR ? radarrCfg : sonarrCfg;
+  const body = isR ? {tmdb_id:parseInt(id), url:cfg.url, key:cfg.key} : {tvdb_id:parseInt(id), url:cfg.url, key:cfg.key};
   try {
     const r = await fetch(`/api/${type}/add`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d = await r.json();
-    if (d.ok) { toast('ok', `Dodano!`); addLog('ok', `${type}: dodano`); closeRadarr(); }
+    if (d.ok) { toast('ok','Dodano!'); addLog('ok',`${type}: dodano`); closeRadarr(); }
     else       { toast('err', d.error||'Błąd'); }
   } catch(e) { toast('err', e.message); }
 }
 
 async function searchIndexers(type, externalId, internalId) {
   const isR = type === 'radarr';
-  toast('info', `Zlecam przeszukanie indexatorów w ${isR?'Radarr':'Sonarr'}…`);
-  addLog('info', `${isR?'Radarr':'Sonarr'}: uruchamianie wyszukiwania indexatorów`);
-  const cfg = isR ? radarrCfg : sonarrCfg;
+  toast('info', `Szukam indexatorów w ${isR?'Radarr':'Sonarr'}…`);
+  const cfg  = isR ? radarrCfg : sonarrCfg;
   const body = isR
-    ? {tmdb_id: externalId, movie_id: internalId||undefined, url: cfg?.url, key: cfg?.key}
-    : {tvdb_id: externalId, series_id: internalId||undefined, url: cfg?.url, key: cfg?.key};
+    ? {tmdb_id:externalId, movie_id:internalId||undefined, url:cfg?.url, key:cfg?.key}
+    : {tvdb_id:externalId, series_id:internalId||undefined, url:cfg?.url, key:cfg?.key};
   try {
-    const r = await fetch(`/api/${type}/search`, {
-      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
-    });
+    const r = await fetch(`/api/${type}/search`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     const d = await r.json();
-    if (d.ok) {
-      toast('ok', `Zlecono wyszukiwanie – sprawdź kolejkę w ${isR?'Radarr':'Sonarr'}`);
-      addLog('ok', `${isR?'Radarr':'Sonarr'}: komenda wysłana (id=${d.command?.id||'?'})`);
-    } else {
-      toast('err', d.error || 'Błąd');
-      addLog('err', `${isR?'Radarr':'Sonarr'} search: ${d.error}`);
-    }
-  } catch(e) {
-    toast('err', e.message);
-    addLog('err', e.message);
-  }
+    d.ok ? toast('ok','Zlecono wyszukiwanie') : toast('err', d.error||'Błąd');
+  } catch(e) { toast('err', e.message); }
 }
 
 // Init – wczytaj konfigurację ARR z serwera

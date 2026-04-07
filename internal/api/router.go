@@ -85,10 +85,6 @@ func (r *Router) handleProtected(w http.ResponseWriter, req *http.Request) {
 		r.handleRadarrTest(w, req)
 	case path == "/api/sonarr/test":
 		r.handleSonarrTest(w, req)
-	case path == "/api/radarr/lookup":
-		r.handleRadarrLookup(w, req)
-	case path == "/api/sonarr/lookup":
-		r.handleSonarrLookup(w, req)
 	case path == "/api/radarr/queue":
 		r.handleRadarrQueue(w, req)
 	case path == "/api/sonarr/queue":
@@ -101,6 +97,22 @@ func (r *Router) handleProtected(w http.ResponseWriter, req *http.Request) {
 		r.handleArrAdd(w, req)
 	case path == "/api/sonarr/add":
 		r.handleArrAdd(w, req)
+	case path == "/api/radarr/recent":
+		r.handleRadarrRecent(w, req)
+	case path == "/api/sonarr/recent":
+		r.handleSonarrRecent(w, req)
+	case path == "/api/radarr/library":
+		r.handleRadarrLibrary(w, req)
+	case path == "/api/sonarr/library":
+		r.handleSonarrLibrary(w, req)
+	case path == "/api/radarr/health":
+		r.handleRadarrHealth(w, req)
+	case path == "/api/sonarr/health":
+		r.handleSonarrHealth(w, req)
+	case path == "/api/radarr/lookup":
+		r.handleRadarrLookup(w, req)
+	case path == "/api/sonarr/lookup":
+		r.handleSonarrLookup(w, req)
 	default:
 		http.NotFound(w, req)
 	}
@@ -459,18 +471,14 @@ func (r *Router) handleListTorrents(w http.ResponseWriter, s *models.QBitServer)
 	// Enrich with formatted speed strings for frontend
 	type torrentOut struct {
 		qbit.Torrent
-		DLSpeed    int64  `json:"dl_speed"`
-		ULSpeed    int64  `json:"up_speed"`
 		DLSpeedFmt string `json:"dl_speed_fmt"`
-		ULSpeedFmt string `json:"up_speed_fmt"`
+		ULSpeedFmt string `json:"ul_speed_fmt"`
 		ETAFmt     string `json:"eta_fmt"`
 	}
 	out := make([]torrentOut, len(torrents))
 	for i, t := range torrents {
 		out[i] = torrentOut{
 			Torrent:    t,
-			DLSpeed:    t.DLSpeed,
-			ULSpeed:    t.ULSpeed,
 			DLSpeedFmt: fmtSpeed(t.DLSpeed),
 			ULSpeedFmt: fmtSpeed(t.ULSpeed),
 			ETAFmt:     fmtETA(t.ETA),
@@ -936,34 +944,44 @@ func (r *Router) handleRadarrLookup(w http.ResponseWriter, req *http.Request) {
 		writeJSON(w, 200, map[string]string{"error": "Nie znaleziono"})
 		return
 	}
-	mv := results[0]
-	// Check if in library
-	tmdbID := mv["tmdbId"]
-	inLib := false
-	if tmdbID != nil {
-		lb, _ := arrGet(u, k, "/api/v3/movie", url.Values{"tmdbId": {fmt.Sprintf("%v", tmdbID)}})
-		var libMovies []interface{}
-		if json.Unmarshal(lb, &libMovies) == nil {
-			inLib = len(libMovies) > 0
+	// Pobierz liste filmów z biblioteki żeby sprawdzić status
+	var libMovies []map[string]interface{}
+	if lb, err2 := arrGet(u, k, "/api/v3/movie", nil); err2 == nil {
+		json.Unmarshal(lb, &libMovies)
+	}
+	libByTmdb := map[string]map[string]interface{}{}
+	for _, m := range libMovies {
+		if tid, ok := m["tmdbId"]; ok {
+			libByTmdb[fmt.Sprintf("%v", tid)] = m
 		}
 	}
-	mv["in_radarr"] = inLib
-	mv["has_file"] = false
-	if hf, ok := mv["hasFile"].(bool); ok {
-		mv["has_file"] = hf
-	}
-	// Extract poster
-	if imgs, ok := mv["images"].([]interface{}); ok {
-		for _, img := range imgs {
-			if im, ok := img.(map[string]interface{}); ok {
-				if im["coverType"] == "poster" {
-					mv["poster"] = im["remoteUrl"]
-					break
+	// Wzbogać top 5 wyników
+	out := []map[string]interface{}{}
+	for i, mv := range results {
+		if i >= 5 { break }
+		tmdbID := fmt.Sprintf("%v", mv["tmdbId"])
+		if lib, found := libByTmdb[tmdbID]; found {
+			mv["in_radarr"] = true
+			if hf, ok := lib["hasFile"].(bool); ok { mv["has_file"] = hf }
+			if mid, ok := lib["id"]; ok { mv["id"] = mid }
+		} else {
+			mv["in_radarr"] = false
+			mv["has_file"] = false
+		}
+		// Extract poster
+		if imgs, ok := mv["images"].([]interface{}); ok {
+			for _, img := range imgs {
+				if im, ok := img.(map[string]interface{}); ok {
+					if im["coverType"] == "poster" {
+						mv["poster"] = im["remoteUrl"]
+						break
+					}
 				}
 			}
 		}
+		out = append(out, mv)
 	}
-	writeJSON(w, 200, mv)
+	writeJSON(w, 200, out)
 }
 
 func (r *Router) handleSonarrLookup(w http.ResponseWriter, req *http.Request) {
@@ -984,28 +1002,47 @@ func (r *Router) handleSonarrLookup(w http.ResponseWriter, req *http.Request) {
 		writeJSON(w, 200, map[string]string{"error": "Nie znaleziono"})
 		return
 	}
-	sv := results[0]
-	sv["in_sonarr"] = false
-	// Check library
-	tvdbID := sv["tvdbId"]
-	if tvdbID != nil {
-		lb, _ := arrGet(u, k, "/api/v3/series", url.Values{"tvdbId": {fmt.Sprintf("%v", tvdbID)}})
-		var libSeries []interface{}
-		if json.Unmarshal(lb, &libSeries) == nil {
-			sv["in_sonarr"] = len(libSeries) > 0
+	// Pobierz całą bibliotekę Sonarr
+	var libSeries []map[string]interface{}
+	if lb, err2 := arrGet(u, k, "/api/v3/series", nil); err2 == nil {
+		json.Unmarshal(lb, &libSeries)
+	}
+	libByTvdb := map[string]map[string]interface{}{}
+	for _, s := range libSeries {
+		if tid, ok := s["tvdbId"]; ok {
+			libByTvdb[fmt.Sprintf("%v", tid)] = s
 		}
 	}
-	if imgs, ok := sv["images"].([]interface{}); ok {
-		for _, img := range imgs {
-			if im, ok := img.(map[string]interface{}); ok {
-				if im["coverType"] == "poster" {
-					sv["poster"] = im["remoteUrl"]
-					break
+	out := []map[string]interface{}{}
+	for i, sv := range results {
+		if i >= 5 { break }
+		tvdbID := fmt.Sprintf("%v", sv["tvdbId"])
+		if lib, found := libByTvdb[tvdbID]; found {
+			sv["in_sonarr"] = true
+			if sid, ok := lib["id"]; ok { sv["id"] = sid }
+			sv["has_file"] = false
+			if stats, ok := lib["statistics"].(map[string]interface{}); ok {
+				if pct, ok := stats["percentOfEpisodes"].(float64); ok {
+					sv["has_file"] = pct > 0
+				}
+			}
+		} else {
+			sv["in_sonarr"] = false
+			sv["has_file"] = false
+		}
+		if imgs, ok := sv["images"].([]interface{}); ok {
+			for _, img := range imgs {
+				if im, ok := img.(map[string]interface{}); ok {
+					if im["coverType"] == "poster" {
+						sv["poster"] = im["remoteUrl"]
+						break
+					}
 				}
 			}
 		}
+		out = append(out, sv)
 	}
-	writeJSON(w, 200, sv)
+	writeJSON(w, 200, out)
 }
 
 func (r *Router) handleRadarrQueue(w http.ResponseWriter, req *http.Request) {
@@ -1295,6 +1332,160 @@ func (r *Router) handleArrAdd(w http.ResponseWriter, req *http.Request) {
 
 // SSH test route is handled in handleServerDetail via action == "test_ssh"
 // This is a standalone handler for /api/servers/<id>/test_ssh via GET
+
+
+// handleRadarrRecent – ostatnio dodane filmy (max 10)
+func (r *Router) handleRadarrRecent(w http.ResponseWriter, req *http.Request) {
+	arr := r.store.GetARR()
+	u, k := arr.Radarr.URL, arr.Radarr.Key
+	if u == "" { writeJSON(w, 200, []interface{}{}); return }
+	b, err := arrGet(u, k, "/api/v3/movie", url.Values{"sortKey": {"added"}, "sortDir": {"desc"}})
+	if err != nil { writeJSON(w, 200, []interface{}{}); return }
+	var movies []map[string]interface{}
+	if err := json.Unmarshal(b, &movies); err != nil { writeJSON(w, 200, []interface{}{}); return }
+	out := []map[string]interface{}{}
+	for i, mv := range movies {
+		if i >= 10 { break }
+		item := map[string]interface{}{
+			"title":    mv["title"],
+			"year":     mv["year"],
+			"hasFile":  mv["hasFile"],
+			"status":   mv["status"],
+			"added":    mv["added"],
+			"monitored":mv["monitored"],
+		}
+		if mfData, ok := mv["movieFile"].(map[string]interface{}); ok {
+			item["quality"] = mfData["quality"]
+			item["size"] = mfData["size"]
+		}
+		if imgs, ok := mv["images"].([]interface{}); ok {
+			for _, img := range imgs {
+				if im, ok := img.(map[string]interface{}); ok && im["coverType"] == "poster" {
+					item["poster"] = im["remoteUrl"]
+					break
+				}
+			}
+		}
+		out = append(out, item)
+	}
+	writeJSON(w, 200, out)
+}
+
+// handleSonarrRecent – ostatnio dodane seriale (max 10)
+func (r *Router) handleSonarrRecent(w http.ResponseWriter, req *http.Request) {
+	arr := r.store.GetARR()
+	u, k := arr.Sonarr.URL, arr.Sonarr.Key
+	if u == "" { writeJSON(w, 200, []interface{}{}); return }
+	b, err := arrGet(u, k, "/api/v3/series", url.Values{"sortKey": {"added"}, "sortDir": {"desc"}})
+	if err != nil { writeJSON(w, 200, []interface{}{}); return }
+	var series []map[string]interface{}
+	if err := json.Unmarshal(b, &series); err != nil { writeJSON(w, 200, []interface{}{}); return }
+	out := []map[string]interface{}{}
+	for i, sv := range series {
+		if i >= 10 { break }
+		item := map[string]interface{}{
+			"title":    sv["title"],
+			"year":     sv["year"],
+			"status":   sv["status"],
+			"added":    sv["added"],
+			"monitored":sv["monitored"],
+		}
+		if svStats, ok := sv["statistics"].(map[string]interface{}); ok {
+			item["episodeCount"]   = svStats["totalEpisodeCount"]
+			item["episodeHave"]    = svStats["episodeCount"]
+			item["sizeOnDisk"]     = svStats["sizeOnDisk"]
+			item["percentOfEpisodes"] = svStats["percentOfEpisodes"]
+		}
+		if imgs, ok := sv["images"].([]interface{}); ok {
+			for _, img := range imgs {
+				if im, ok := img.(map[string]interface{}); ok && im["coverType"] == "poster" {
+					item["poster"] = im["remoteUrl"]
+					break
+				}
+			}
+		}
+		out = append(out, item)
+	}
+	writeJSON(w, 200, out)
+}
+
+// handleRadarrLibrary – statystyki biblioteki Radarr
+func (r *Router) handleRadarrLibrary(w http.ResponseWriter, req *http.Request) {
+	arr := r.store.GetARR()
+	u, k := arr.Radarr.URL, arr.Radarr.Key
+	if u == "" { writeJSON(w, 200, map[string]interface{}{"error": "not configured"}); return }
+	b, err := arrGet(u, k, "/api/v3/movie", nil)
+	if err != nil { writeJSON(w, 200, map[string]interface{}{"error": err.Error()}); return }
+	var movies []map[string]interface{}
+	if err := json.Unmarshal(b, &movies); err != nil { writeJSON(w, 200, map[string]interface{}{"error": "parse error"}); return }
+	total, withFile, monitored := 0, 0, 0
+	var totalSize int64
+	for _, m := range movies {
+		total++
+		if hf, ok := m["hasFile"].(bool); ok && hf { withFile++ }
+		if mo, ok := m["monitored"].(bool); ok && mo { monitored++ }
+		if mf, ok := m["movieFile"].(map[string]interface{}); ok {
+			if sz, ok := mf["size"].(float64); ok { totalSize += int64(sz) }
+		}
+	}
+	writeJSON(w, 200, map[string]interface{}{
+		"total": total, "withFile": withFile,
+		"monitored": monitored, "missing": monitored - withFile,
+		"totalSize": totalSize,
+	})
+}
+
+// handleSonarrLibrary – statystyki biblioteki Sonarr
+func (r *Router) handleSonarrLibrary(w http.ResponseWriter, req *http.Request) {
+	arr := r.store.GetARR()
+	u, k := arr.Sonarr.URL, arr.Sonarr.Key
+	if u == "" { writeJSON(w, 200, map[string]interface{}{"error": "not configured"}); return }
+	b, err := arrGet(u, k, "/api/v3/series", nil)
+	if err != nil { writeJSON(w, 200, map[string]interface{}{"error": err.Error()}); return }
+	var series []map[string]interface{}
+	if err := json.Unmarshal(b, &series); err != nil { writeJSON(w, 200, map[string]interface{}{"error": "parse error"}); return }
+	total, monitored := 0, 0
+	var totalEp, haveEp int64
+	var totalSize int64
+	for _, sv := range series {
+		total++
+		if mo, ok := sv["monitored"].(bool); ok && mo { monitored++ }
+		if svStats, ok := sv["statistics"].(map[string]interface{}); ok {
+			if n, ok := svStats["totalEpisodeCount"].(float64); ok { totalEp += int64(n) }
+			if n, ok := svStats["episodeCount"].(float64); ok { haveEp += int64(n) }
+			if n, ok := svStats["sizeOnDisk"].(float64); ok { totalSize += int64(n) }
+		}
+	}
+	writeJSON(w, 200, map[string]interface{}{
+		"total": total, "monitored": monitored,
+		"totalEpisodes": totalEp, "haveEpisodes": haveEp,
+		"totalSize": totalSize,
+	})
+}
+
+// handleRadarrHealth – health messages z Radarr
+func (r *Router) handleRadarrHealth(w http.ResponseWriter, req *http.Request) {
+	arr := r.store.GetARR()
+	u, k := arr.Radarr.URL, arr.Radarr.Key
+	if u == "" { writeJSON(w, 200, []interface{}{}); return }
+	b, err := arrGet(u, k, "/api/v3/health", nil)
+	if err != nil { writeJSON(w, 200, map[string]interface{}{"error": err.Error()}); return }
+	var result interface{}
+	json.Unmarshal(b, &result)
+	writeJSON(w, 200, result)
+}
+
+// handleSonarrHealth – health messages z Sonarr
+func (r *Router) handleSonarrHealth(w http.ResponseWriter, req *http.Request) {
+	arr := r.store.GetARR()
+	u, k := arr.Sonarr.URL, arr.Sonarr.Key
+	if u == "" { writeJSON(w, 200, []interface{}{}); return }
+	b, err := arrGet(u, k, "/api/v3/health", nil)
+	if err != nil { writeJSON(w, 200, map[string]interface{}{"error": err.Error()}); return }
+	var result interface{}
+	json.Unmarshal(b, &result)
+	writeJSON(w, 200, result)
+}
 
 func fmtSpeed(bps int64) string {
 	switch {
