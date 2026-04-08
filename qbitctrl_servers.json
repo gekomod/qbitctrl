@@ -1,0 +1,34 @@
+[
+  {
+    "id": "serwer1",
+    "name": "Serwer1",
+    "host": "192.168.1.23",
+    "port": 8080,
+    "username": "admin",
+    "password": "BV931Op1",
+    "https": false,
+    "restart_type": "docker",
+    "restart_unit": "",
+    "ssh_user": "root",
+    "ssh_port": 22,
+    "ssh_key_path": "",
+    "auto_restart": false,
+    "auto_restart_interval": 60
+  },
+  {
+    "id": "serwer2",
+    "name": "Serwer2",
+    "host": "192.168.1.35",
+    "port": 8080,
+    "username": "admin",
+    "password": "BV931Op1",
+    "https": false,
+    "restart_type": "systemd",
+    "restart_unit": "qbittorrent",
+    "ssh_user": "root",
+    "ssh_port": 22,
+    "ssh_key_path": "/root/.ssh/qbitctrl_key_serwer2.pub",
+    "auto_restart": true,
+    "auto_restart_interval": 10
+  }
+]
